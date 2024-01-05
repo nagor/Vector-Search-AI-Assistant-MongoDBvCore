@@ -234,6 +234,9 @@ resource appServiceFunctionSettings 'Microsoft.Web/sites/config@2022-03-01' = {
     OPENAI__ENDPOINT: openAiSettings.endPoint
     OPENAI__KEY: openAiSettings.accountKey
     OPENAI__EMBEDDINGSDEPLOYMENT: openAiSettings.embeddingsModel.deployment.name
+    OPENAI__COMPLETIONSDEPLOYMENT: openaisettings.completionsModel.deployment.name
+    OPENAI__MAXCONVERSATIONTOKENS: openAiSettings.maxConversationTokens
+    OPENAI__MAXCOMPLETIONTOKENS: openAiSettings.maxCompletionTokens
     OPENAI__MAXTOKENS: '8191'
     MONGODB__CONNECTION: 'mongodb+srv://${mongovCoreSettings.mongoClusterLogin}:${mongovCoreSettings.mongoClusterPassword}@${mongovCoreSettings.mongoClusterName}.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000'
     MONGODB__DATABASENAME: 'retaildb'
