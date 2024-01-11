@@ -66,6 +66,7 @@ public class MongoDbService
         CreateVectorIndexIfNotExists("products", _vectorIndexType);
         CreateVectorIndexIfNotExists("customers", _vectorIndexType);
         CreateVectorIndexIfNotExists("salesOrders", _vectorIndexType);
+        CreateVectorIndexIfNotExists("clothes", _vectorIndexType);
     }
 
     /// <summary>
@@ -446,7 +447,7 @@ public class MongoDbService
             IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>(collectionName);
             BsonDocument filter = new BsonDocument();
 
-            using (var cursor = await collection.FindAsync(filter))
+            using (var cursor = await collection.FindAsync(filter, new FindOptions<BsonDocument>(){ BatchSize = 10000}))
             {
                 while (await cursor.MoveNextAsync())
                 {
@@ -458,9 +459,11 @@ public class MongoDbService
 
                         document["vector"] = BsonValue.Create(embeddings);
 
-                        var documentFilter = Builders<BsonDocument>.Filter.Eq("_id", (ObjectId)document.GetElement("_id").Value);
+                        var docId = (ObjectId)document.GetElement("_id").Value;
+                        var documentFilter = Builders<BsonDocument>.Filter.Eq("_id", docId);
 
-                        await _database.GetCollection<BsonDocument>(collectionName).UpdateOneAsync(documentFilter, document);
+                        await _database.GetCollection<BsonDocument>(collectionName).ReplaceOneAsync(documentFilter, document);
+                        _logger.LogInformation($"Processed doc: {docId.ToString()}");
                     }
                 }
             }
