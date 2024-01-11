@@ -35,7 +35,7 @@ public class ChatService
     /// Returns list of chat session ids and names for left-hand nav to bind to (display Name and ChatSessionId as hidden)
     /// </summary>
     public async Task<List<Session>> GetAllChatSessionsAsync()
-    {  
+    {
         return _sessions = await _mongoDbService.GetSessionsAsync();
     }
 
@@ -86,7 +86,7 @@ public class ChatService
     }
 
     /// <summary>
-    /// Rename the Chat Ssssion from "New Chat" to the summary provided by OpenAI
+    /// Rename the Chat Session from "New Chat" to the summary provided by OpenAI
     /// </summary>
     public async Task RenameChatSessionAsync(string? sessionId, string newChatSessionName)
     {
@@ -120,7 +120,7 @@ public class ChatService
     {
 
         try
-        { 
+        {
             ArgumentNullException.ThrowIfNull(sessionId);
 
 
@@ -155,7 +155,7 @@ public class ChatService
             return completionText;
 
         }
-        catch (Exception ex) 
+        catch (Exception ex)
         {
             string message = $"ChatService.GetChatCompletionAsync(): {ex.Message}";
             _logger.LogError(message);
@@ -171,11 +171,11 @@ public class ChatService
     /// </summary>
     private (string augmentedContent, string conversationAndUserPrompt) BuildPrompts(string userPrompt, string conversation, string retrievedData)
     {
-        
+
         string updatedAugmentedContent = "";
         string updatedConversationAndUserPrompt = "";
 
-        
+
         //SharpToken only estimates token usage and often undercounts. Add a buffer of 200 tokens.
         int bufferTokens = 200;
 
@@ -209,7 +209,7 @@ public class ChatService
             int newRagTokens = (int)Math.Round(ragTokens - (ragTokenPct * tokensToReduce), 0);
             int newConvTokens = (int)Math.Round(convTokens - (conTokenPct * tokensToReduce), 0);
 
-            
+
             //Get the reduced set of RAG vectors
             List<int> trimmedRagVectors = ragVectors.GetRange(0, newRagTokens);
             //Convert the vectors back to text
@@ -219,7 +219,7 @@ public class ChatService
 
             //Get the reduce set of conversation vectors
             List<int> trimmedConvVectors = convVectors.GetRange(offset, newConvTokens);
-            
+
             //Convert vectors back into reduced conversation length
             updatedConversationAndUserPrompt = encoding.Decode(trimmedConvVectors);
 
@@ -231,7 +231,7 @@ public class ChatService
         //If everything is less than _maxCompletionTokens then good to go.
         else
         {
-            
+
             //Return all of the content
             updatedAugmentedContent = retrievedData;
             updatedConversationAndUserPrompt = conversation + Environment.NewLine + userPrompt;
@@ -249,7 +249,7 @@ public class ChatService
     {
 
         int? tokensUsed = 0;
-        
+
         int index = _sessions.FindIndex(s => s.SessionId == sessionId);
 
         List<Message> conversationMessages = _sessions[index].Messages.ToList(); //make a full copy
