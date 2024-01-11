@@ -28,7 +28,7 @@ namespace Vectorize
             _logger.LogInformation("Ingest and Vectorize HTTP trigger function is processing a request.");
             try
             {
-                
+
                 // Ingest json data into MongoDB collections
                 await IngestDataFromBlobStorageAsync();
 
@@ -49,10 +49,38 @@ namespace Vectorize
             }
         }
 
+        [Function("Vectorize")]
+        public async Task<HttpResponseData> Vectorize(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", "get", Route = null)] HttpRequestData req)
+        {
+            _logger.LogInformation("Vectorize existing collections is processing a request.");
+            try
+            {
+
+                // Ingest json data into MongoDB collections
+                await VectorizeDataAsync();
+
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+                await response.WriteStringAsync("Vectorize HTTP trigger function executed successfully.");
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+
+                var response = req.CreateResponse(HttpStatusCode.BadRequest);
+                await response.WriteStringAsync(ex.ToString());
+                return response;
+
+            }
+        }
+
+
+
         public async Task IngestDataFromBlobStorageAsync()
         {
-            
-
             try
             {
                 BlobContainerClient blobContainerClient = new BlobContainerClient(new Uri("https://cosmosdbcosmicworks.blob.core.windows.net/cosmic-works-mongo-vcore/"));
@@ -77,9 +105,8 @@ namespace Vectorize
                         {
                             string json = await pReader.ReadToEndAsync();
                             await _mongo.ImportAndVectorizeAsync(blobId, json);
-
                         }
-                        
+
                         _logger.LogInformation($"{blobId} data ingestion complete.");
 
                     }
@@ -89,6 +116,27 @@ namespace Vectorize
             catch(Exception ex)
             {
                 _logger.LogError($"Exception: IngestDataFromBlobStorageAsync(): {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task VectorizeDataAsync()
+        {
+            try
+            {
+                List<string> collections = new List<string>() { "clothes" };
+
+
+                foreach(string collection in collections)
+                {
+                    await _mongo.VectorizeAsync(collection);
+                    _logger.LogInformation($"{collection} data vectorization complete.");
+                }
+
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError($"Exception: VectorizeDataAsync(): {ex.Message}");
                 throw;
             }
         }
