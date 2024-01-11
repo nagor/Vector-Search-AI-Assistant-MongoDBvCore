@@ -23,7 +23,7 @@ public class MongoDbService
     private readonly IMongoCollection<Message> _messages;
     private readonly string _vectorIndexType;
     private readonly int _maxVectorSearchResults = default;
-    
+
 
     private readonly OpenAiService _openAiService;
     private readonly ILogger _logger;
@@ -62,7 +62,7 @@ public class MongoDbService
         _sessions = _database.GetCollection<Session>("completions");
         _messages = _database.GetCollection<Message>("completions");
 
-        
+
         CreateVectorIndexIfNotExists("products", _vectorIndexType);
         CreateVectorIndexIfNotExists("customers", _vectorIndexType);
         CreateVectorIndexIfNotExists("salesOrders", _vectorIndexType);
@@ -117,7 +117,7 @@ public class MongoDbService
         var vectorIndex = new BsonDocument();
 
         if(vectorIndexType == "hnsw")
-        { 
+        {
             vectorIndex = new BsonDocument
             {
                 { "createIndexes", collectionName },
@@ -181,7 +181,7 @@ public class MongoDbService
 
         string resultDocuments = string.Empty;
 
-        
+
         try
         {
 
@@ -332,7 +332,7 @@ public class MongoDbService
             //Delete customer from customer collection
             await _customers.DeleteOneAsync(filter);
 
-            
+
         }
         catch (MongoException ex)
         {
@@ -423,9 +423,9 @@ public class MongoDbService
             {
                 //Vectorize item, add to vector property, save in collection.
                 (float[] embeddings, int tokens) = await _openAiService.GetEmbeddingsAsync(string.Empty, document.ToString());
-                
+
                 document["vector"] = BsonValue.Create(embeddings);
-                
+
                 await _database.GetCollection<BsonDocument>(collectionName).InsertOneAsync(document);
             }
 
@@ -434,6 +434,42 @@ public class MongoDbService
         catch (MongoException ex)
         {
             _logger.LogError($"Exception: ImportJsonAsync(): {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task VectorizeAsync(string collectionName)
+    {
+        try
+        {
+            IMongoDatabase database = _client.GetDatabase("retaildb");
+            IMongoCollection<BsonDocument> collection = database.GetCollection<BsonDocument>(collectionName);
+            BsonDocument filter = new BsonDocument();
+
+            using (var cursor = await collection.FindAsync(filter))
+            {
+                while (await cursor.MoveNextAsync())
+                {
+                    var batch = cursor.Current;
+                    foreach (BsonDocument document in batch)
+                    {
+                        //Vectorize item, add to vector property, save in collection.
+                        (float[] embeddings, int tokens) = await _openAiService.GetEmbeddingsAsync(string.Empty, document.ToString());
+
+                        document["vector"] = BsonValue.Create(embeddings);
+
+                        var documentFilter = Builders<BsonDocument>.Filter.Eq("_id", (ObjectId)document.GetElement("_id").Value);
+
+                        await _database.GetCollection<BsonDocument>(collectionName).UpdateOneAsync(documentFilter, document);
+                    }
+                }
+            }
+
+        }
+
+        catch (MongoException ex)
+        {
+            _logger.LogError($"Exception: VectorizeAsync(): {ex.Message}");
             throw;
         }
     }
