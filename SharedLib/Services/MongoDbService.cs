@@ -514,10 +514,11 @@ public class MongoDbService
         try
         {
 
-            messages = await _messages.Find(
+            messages = (await _messages.Find(
                 filter: Builders<Message>.Filter.Eq("Type", nameof(Message))
                 & Builders<Message>.Filter.Eq("SessionId", sessionId))
-                .ToListAsync();
+                .ToListAsync())
+                .OrderBy(message => message.TimeStamp).ToList();
 
         }
         catch (MongoException ex)
