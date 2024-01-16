@@ -227,7 +227,8 @@ public class MongoDbService
             // Return results, combine into a single string
             List<BsonDocument> bsonDocuments = await collection.Aggregate<BsonDocument>(pipeline).ToListAsync();
             List<string> result = bsonDocuments.ConvertAll(bsonDocument => bsonDocument.ToString());
-            resultDocuments = string.Join(" ", result);
+            // resultDocuments = string.Join(" ", result);
+            resultDocuments = "[" + string.Join(",", result) + "]";
 
         }
         catch (MongoException ex)

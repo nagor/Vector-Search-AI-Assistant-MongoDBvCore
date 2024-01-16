@@ -1,9 +1,9 @@
-﻿using Humanizer.Localisation.TimeToClockNotation;
+﻿using System.Text;
+using System.Text.RegularExpressions;
 using Search.Constants;
 using SharedLib.Models;
 using SharedLib.Services;
 using SharpToken;
-using Microsoft.ML.Tokenizers;
 
 namespace Search.Services;
 
@@ -19,6 +19,25 @@ public class ChatService
     private readonly int _maxConversationTokens;
     private readonly int _maxCompletionTokens;
     private readonly ILogger _logger;
+
+    private readonly string _tagsGenerationPromptTemplate = @"
+        You will read a paragraph of what I being a clothes store customer want. Paragraph may include the following stories:
+            - what is my gender
+            - what I want to look alike
+            - what my travel plans are
+            - what countries and cities I want to visit
+            - what time of year I plan to travel
+            - what types of events or places I want to visit
+        ---
+        PARAGRAPH
+        [USER_PROMPT] 
+        ---
+        Now you will generate a list of product tags to query a database for clothes, footwear, and accessories that I might need in my endeavor. 
+        Make sure those tags are relevant to places I want to visit, to the weather at those places, and to events I plan to visit. 
+
+        Take a step-by-step approach in your response, cite sources, and give reasoning before sharing the final answer.
+        ---
+        At the end display list of tags using the format: TAGS: <tags> :TAGS";
 
     public ChatService(OpenAiService openAiService, MongoDbService mongoDbService, ILogger logger)
     {
@@ -116,7 +135,7 @@ public class ChatService
     /// <summary>
     /// Receive a prompt from a user, Vectorize it from _openAIService Get a completion from _openAiService
     /// </summary>
-    public async Task<string> GetChatCompletionAsync(string? sessionId, string userPrompt, string collectionName)
+    public async Task<string> GetChatCompletionRAGAsync(string? sessionId, string userPrompt, string collectionName)
     {
 
         try
@@ -153,6 +172,92 @@ public class ChatService
 
 
             return completionText;
+
+        }
+        catch (Exception ex)
+        {
+            string message = $"ChatService.GetChatCompletionAsync(): {ex.Message}";
+            _logger.LogError(message);
+            throw;
+
+        }
+    }
+
+    public async Task<string> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName)
+    {
+
+        try
+        {
+            ArgumentNullException.ThrowIfNull(sessionId);
+
+            // 1. Extend user prompt with predefined template with PARAGRAPH
+            string prompt = _tagsGenerationPromptTemplate.Replace("[USER_PROMPT]", userPrompt);
+
+            // Get the most recent conversation history up to _maxConversationTokens
+            //string conversation = GetConversationHistory(sessionId);
+
+            // Construct our prompts: here we can use previous conversation ans maybe some data context.
+            // We omit conversation and data for now.
+            // Trim payload to prevent exceeding token limits.
+            (string augmentedContent, string conversationAndUserPrompt) = BuildPrompts(prompt, conversation: "", retrievedData: "");
+
+
+            //Generate the completion from Azure OpenAI to have product tags
+            (string completionText, int ragTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPrompt, documents: augmentedContent);
+
+            // Regular expression pattern
+            //string pattern = @"TAGS:(.*?)(\n|$)";
+            string pattern = @"TAGS:(.*?)(:TAGS|$)";
+
+            // Match the pattern
+            Match match = Regex.Match(completionText, pattern, RegexOptions.Singleline);
+
+            string embeddingsPattern = userPrompt;
+            // Check if a match is found
+            if (match.Success)
+            {
+                embeddingsPattern = match.Groups[1].Value.Trim();
+            }
+
+            //Get embeddings for tags found OR if no tags found for user prompt
+            (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, embeddingsPattern);
+
+
+
+            //Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
+            Message promptMessage = new Message(sessionId, nameof(Participants.User), tokens: completionTokens, promptTokens: default, text: userPrompt);
+
+
+
+            //Do vector search on tags found by user prompt
+            string retrievedDocuments = await _mongoDbService.VectorSearchAsync(collectionName, promptVectors);
+
+            // Deserialize BsonDocuments to a list of C# objects (ClothesProduct model)
+            List<ClothesProduct> clothesProducts = ClothesProductExtensions.GetProducts(retrievedDocuments);
+
+            string formattedProducts = clothesProducts.ToFormattedString();
+
+            StringBuilder stringBuilder = new StringBuilder();
+
+            stringBuilder.AppendLine(completionText);
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine(new string('-', 20));
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine("Products found:");
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine(formattedProducts);
+
+            string completionTextWithProducts = stringBuilder.ToString();
+
+
+            //Create the completion message object
+            Message completionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens: ragTokens, completionTextWithProducts);
+
+            //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
+            await AddPromptCompletionMessagesAsync(sessionId, promptMessage, completionMessage);
+
+            return completionTextWithProducts;
 
         }
         catch (Exception ex)
@@ -275,6 +380,8 @@ public class ChatService
         ArgumentNullException.ThrowIfNull(sessionId);
 
         string response = await _openAiService.SummarizeAsync(sessionId, prompt);
+        if (response.Length > 30)
+            response = response.Substring(0, 30) + "...";
 
         await RenameChatSessionAsync(sessionId, response);
 

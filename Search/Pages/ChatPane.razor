@@ -135,10 +135,10 @@
             <div class="bg-primary text-light px-2 py-2">
                 <label for="dropdown"><strong class="">Select Data:</strong></label>
                 <select id="collectionName" name="collectionName" @bind="@CollectionName" class="">
+                    <option value="clothes">Clothes</option>
                     <option value="products">Products</option>
                     <option value="customers">Customers</option>
                     <option value="salesOrders">Sales Orders</option>
-                    <option value="clothes">Clothes</option>
                 </select>
             </div>
 
@@ -248,10 +248,10 @@
 
         if (CollectionName is null)
         {
-            CollectionName = "products";
+            CollectionName = "clothes";
         }
 
-        await chatService.GetChatCompletionAsync(CurrentSession?.SessionId, UserPrompt, CollectionName);
+        await chatService.GetChatCompletionProductSearchAsync(CurrentSession?.SessionId, UserPrompt, CollectionName);
 
         if(_messagesInChat?.Count == 2)
         {
