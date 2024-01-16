@@ -22,18 +22,24 @@ public class OpenAiService
 
 
     //System prompts to send with user prompts to instruct the model for chat session
-
+//     private readonly string _systemPromptRetailAssistant = @"
+//         You are an intelligent assistant for the Cosmic Works Bike Company.
+//         You are designed to provide helpful answers to user questions about
+//         product, product category, customer and sales order information provided in JSON format below.
+//
+//         Instructions:
+//         - Only answer questions related to the information provided below,
+//         - Don't reference any product, customer, or salesOrder data not provided below.
+//         - If you're unsure of an answer, you can say ""I don't know"" or ""I'm not sure"" and recommend users search themselves.
+//
+//         Text of relevant information:";
     private readonly string _systemPromptRetailAssistant = @"
-        You are an intelligent assistant for the Cosmic Works Bike Company. 
-        You are designed to provide helpful answers to user questions about 
-        product, product category, customer and sales order information provided in JSON format below.
+        You are an intelligent assistant for the Cool Clothes and Accessories Company selling men's and women's wear, footwear, and accessories.
 
         Instructions:
-        - Only answer questions related to the information provided below,
-        - Don't reference any product, customer, or salesOrder data not provided below.
-        - If you're unsure of an answer, you can say ""I don't know"" or ""I'm not sure"" and recommend users search themselves.
+            - If you're unsure of an answer, please ask the user to clarify their story.
+";
 
-        Text of relevant information:";
 
     //System prompt to send with user prompts to instruct the model for summarization
     private readonly string _summarizePrompt = @"
