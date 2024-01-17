@@ -12,7 +12,7 @@
     "MongoDb__Connection": "",
     "MongoDb__DatabaseName": "retaildb",
     "MongoDb__CollectionNames": "products, customers, salesOrders, completions",
-    "MongoDb__MaxVectorSearchResults": "10",
+    "MongoDb__MaxVectorSearchResults": "20",
     "MongoDb__VectorIndexType": "ivf" // ivf, hnsw
   },
   "IsEncrypted": false

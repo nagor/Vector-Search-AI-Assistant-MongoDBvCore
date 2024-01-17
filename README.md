@@ -235,7 +235,7 @@ This solution can be run locally post deployment. Below are the prerequisites an
     "Connection": "",
     "DatabaseName": "retaildb",
     "CollectionNames": "products, customers, salesOrders, completions",
-    "MaxVectorSearchResults": "10",
+    "MaxVectorSearchResults": "20",
     "VectorIndexType": "hnsw" // ivf, hnsw
   }
 }
@@ -263,7 +263,7 @@ This solution can be run locally post deployment. Below are the prerequisites an
     "MongoDb__Connection": "",
     "MongoDb__DatabaseName": "retaildb",
     "MongoDb__CollectionNames": "products, customers, salesOrders, completions",
-    "MongoDb__MaxVectorSearchResults": "10",
+    "MongoDb__MaxVectorSearchResults": "20",
     "MongoDb__VectorIndexType": "hnsw" // ivf, hnsw
   },
   "IsEncrypted": false
