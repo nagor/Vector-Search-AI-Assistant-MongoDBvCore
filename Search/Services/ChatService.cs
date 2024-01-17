@@ -20,9 +20,43 @@ public class ChatService
     private readonly int _maxCompletionTokens;
     private readonly ILogger _logger;
 
+//     private readonly string _tagsGenerationPromptTemplate = @"
+//         You will read a paragraph of what I being a clothes store customer want. Paragraph may include the following stories:
+//             - what is my gender
+//             - what I want to look alike
+//             - what my travel plans are
+//             - what countries and cities I want to visit
+//             - what time of year I plan to travel
+//             - what types of events or places I want to visit
+//         ---
+//         PARAGRAPH
+//         [USER_PROMPT]
+//         ---
+//         Now you will generate a list of product tags to query a database for clothes, footwear, and accessories that I might need in my endeavor.
+//         Make sure those tags are relevant to places I want to visit, to the weather at those places, and to events I plan to visit.
+//
+//         Take a step-by-step approach in your response, cite sources, and give reasoning before sharing the final answer.
+//         ---
+//         At the end display list of tags using the format: TAGS: <tags> :TAGS";
+
+    // private readonly string _tagsGenerationPromptTemplate = @"
+    //     I am a clothes, footwear, and accessories store customer. You will read a paragraph of what I want. Paragraph may include the following stories:
+    //         - what is my gender or what is gender of a person I am shopping for
+    //         - what I want to look alike
+    //         - what my travel plans are
+    //         - what countries and cities I want to visit
+    //         - what time of year I plan to travel
+    //         - what types of events or places I want to visit
+    //     ---
+    //     PARAGRAPH
+    //     [USER_PROMPT]
+    //     ---
+    //     Now tell what clothes, footwear, and accessories you recommend for my endeavor.
+    //     What properties, attributes, qualities should that clothes, footwear, accessories have?";
+
     private readonly string _tagsGenerationPromptTemplate = @"
-        You will read a paragraph of what I being a clothes store customer want. Paragraph may include the following stories:
-            - what is my gender
+        I am a clothes, footwear, and accessories store customer. You will read a paragraph of what I want. Paragraph may include the following stories:
+            - what is my gender or what is gender of a person I am shopping for
             - what I want to look alike
             - what my travel plans are
             - what countries and cities I want to visit
@@ -32,12 +66,7 @@ public class ChatService
         PARAGRAPH
         [USER_PROMPT] 
         ---
-        Now you will generate a list of product tags to query a database for clothes, footwear, and accessories that I might need in my endeavor. 
-        Make sure those tags are relevant to places I want to visit, to the weather at those places, and to events I plan to visit. 
-
-        Take a step-by-step approach in your response, cite sources, and give reasoning before sharing the final answer.
-        ---
-        At the end display list of tags using the format: TAGS: <tags> :TAGS";
+        Now list properties, attributes, qualities of clothes, footwear, and accessories you recommend for my endeavor. Be precise and short. Do not show your reasoning.";
 
     public ChatService(OpenAiService openAiService, MongoDbService mongoDbService, ILogger logger)
     {
@@ -202,32 +231,31 @@ public class ChatService
             (string augmentedContent, string conversationAndUserPrompt) = BuildPrompts(prompt, conversation: "", retrievedData: "");
 
 
-            //Generate the completion from Azure OpenAI to have product tags
+            // Generate the completion from Azure OpenAI to have product tags
             (string completionText, int ragTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPrompt, documents: augmentedContent);
+
+            //string embeddingsPattern = "Men's." + completionText;
+            string embeddingsPattern = completionText;
 
             // Regular expression pattern
             //string pattern = @"TAGS:(.*?)(\n|$)";
-            string pattern = @"TAGS:(.*?)(:TAGS|$)";
-
-            // Match the pattern
-            Match match = Regex.Match(completionText, pattern, RegexOptions.Singleline);
-
-            string embeddingsPattern = userPrompt;
-            // Check if a match is found
-            if (match.Success)
-            {
-                embeddingsPattern = match.Groups[1].Value.Trim();
-            }
-
-            //Get embeddings for tags found OR if no tags found for user prompt
-            (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, embeddingsPattern);
-
-
+            // string pattern = @"TAGS:(.*?)(:TAGS|$)";
+            //
+            // // Match the pattern
+            // Match match = Regex.Match(completionText, pattern, RegexOptions.Singleline);
+            //
+            // string embeddingsPattern = userPrompt;
+            // // Check if a match is found
+            // if (match.Success)
+            // {
+            //     embeddingsPattern = match.Groups[1].Value.Trim();
+            // }
 
             //Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
             Message promptMessage = new Message(sessionId, nameof(Participants.User), tokens: completionTokens, promptTokens: default, text: userPrompt);
 
-
+            // Get embeddings for chat completion
+            (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, embeddingsPattern);
 
             //Do vector search on tags found by user prompt
             string retrievedDocuments = await _mongoDbService.VectorSearchAsync(collectionName, promptVectors);
@@ -239,17 +267,14 @@ public class ChatService
 
             StringBuilder stringBuilder = new StringBuilder();
 
-            stringBuilder.AppendLine(completionText);
+            stringBuilder.AppendLine("Based on your story I can recommend the following products:");
+            stringBuilder.AppendLine(formattedProducts);
             stringBuilder.AppendLine();
             stringBuilder.AppendLine(new string('-', 20));
             stringBuilder.AppendLine();
-            stringBuilder.AppendLine("Products found:");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(formattedProducts);
+            stringBuilder.AppendLine(completionText);
 
             string completionTextWithProducts = stringBuilder.ToString();
-
 
             //Create the completion message object
             Message completionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens: ragTokens, completionTextWithProducts);

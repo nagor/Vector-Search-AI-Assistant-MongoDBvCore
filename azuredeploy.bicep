@@ -251,7 +251,7 @@ resource appServiceWebSettings 'Microsoft.Web/sites/config@2022-03-01' = {
     MONGODB__CONNECTION: 'mongodb+srv://${mongovCoreSettings.mongoClusterLogin}:${mongovCoreSettings.mongoClusterPassword}@${mongovCoreSettings.mongoClusterName}.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000'
     MONGODB__DATABASENAME: 'retaildb'
     MONGODB__COLLECTIONNAMES: 'product,customer,vectors,completions'
-    MONGODB__MAXVECTORSEARCHRESULTS: '10'
+    MONGODB__MAXVECTORSEARCHRESULTS: '20'
   }
 }
 
