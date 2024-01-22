@@ -32,6 +32,7 @@
         </div>
     }
     <h6 class="px-4 display-6 text-secondary p-2">@GetChatSessionName()</h6>
+    <textarea cols="100" rows="5" class="mb-2" id="PromptTemplate" @bind="SystemPrompt"></textarea>
     <div class="px-4 pb-4 pt-2 flex-grow-1 overflow-y-auto overflow-x-hidden align-items-stretch" id="MessagesInChatdiv">
         @if (CurrentSession is null)
         {
@@ -85,7 +86,7 @@
                             Get Started
                         </h4>
                         <p class="text-nowrap mb-0 fst-italic">
-                            The Cosmic Works AI Retail Assistant is here to answer your product, customer and sales order questions.
+                            AI Retail Assistant is here to answer your product, customer and sales order questions.
                         </p>
                     </div>
                 }
@@ -128,7 +129,7 @@
                 }
             }
         }
-	</div>
+    </div>
     <div class="bg-primary text-light px-4 py-2 rounded-top-5 text-dark d-flex flex-column justify-content-center">
         @if (CurrentSession?.SessionId != Interface.EMPTY_SESSION)
         {
@@ -164,13 +165,24 @@
     [Parameter]
     public bool ShowHeader { get; set; }
 
-	[Parameter]
+    [Parameter]
     public EventCallback OnNavBarVisibilityUpdated { get; set; }
 
 
     private string? UserPrompt { get; set; }
 
+    private string? SystemPrompt { get; set; } =
+        @"You will read a story of what I want.
+---
+STORY
+[USER_PROMPT]
+---
+Now list characteristics of a person based on the story and suggest clothes, footwear and accessories appropriate to the story.
+Be precise and short. Do not show your reasoning.";
+
     private string? UserPromptSet { get; set; }
+
+
 
     private string? CollectionName { get; set; }
 
@@ -251,7 +263,7 @@
             CollectionName = "clothes";
         }
 
-        await chatService.GetChatCompletionProductSearchAsync(CurrentSession?.SessionId, UserPrompt, CollectionName);
+        await chatService.GetChatCompletionProductSearchAsync(CurrentSession?.SessionId, UserPrompt, CollectionName, SystemPrompt);
 
         if(_messagesInChat?.Count == 2)
         {

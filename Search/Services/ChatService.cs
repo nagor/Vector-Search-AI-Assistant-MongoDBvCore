@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using System.Text.RegularExpressions;
 using Search.Constants;
 using SharedLib.Models;
 using SharedLib.Services;
@@ -20,53 +19,13 @@ public class ChatService
     private readonly int _maxCompletionTokens;
     private readonly ILogger _logger;
 
-//     private readonly string _tagsGenerationPromptTemplate = @"
-//         You will read a paragraph of what I being a clothes store customer want. Paragraph may include the following stories:
-//             - what is my gender
-//             - what I want to look alike
-//             - what my travel plans are
-//             - what countries and cities I want to visit
-//             - what time of year I plan to travel
-//             - what types of events or places I want to visit
-//         ---
-//         PARAGRAPH
-//         [USER_PROMPT]
-//         ---
-//         Now you will generate a list of product tags to query a database for clothes, footwear, and accessories that I might need in my endeavor.
-//         Make sure those tags are relevant to places I want to visit, to the weather at those places, and to events I plan to visit.
-//
-//         Take a step-by-step approach in your response, cite sources, and give reasoning before sharing the final answer.
-//         ---
-//         At the end display list of tags using the format: TAGS: <tags> :TAGS";
-
-    // private readonly string _tagsGenerationPromptTemplate = @"
-    //     I am a clothes, footwear, and accessories store customer. You will read a paragraph of what I want. Paragraph may include the following stories:
-    //         - what is my gender or what is gender of a person I am shopping for
-    //         - what I want to look alike
-    //         - what my travel plans are
-    //         - what countries and cities I want to visit
-    //         - what time of year I plan to travel
-    //         - what types of events or places I want to visit
-    //     ---
-    //     PARAGRAPH
-    //     [USER_PROMPT]
-    //     ---
-    //     Now tell what clothes, footwear, and accessories you recommend for my endeavor.
-    //     What properties, attributes, qualities should that clothes, footwear, accessories have?";
-
-    private readonly string _tagsGenerationPromptTemplate = @"
-        I am a clothes, footwear, and accessories store customer. You will read a paragraph of what I want. Paragraph may include the following stories:
-            - what is my gender or what is gender of a person I am shopping for
-            - what I want to look alike
-            - what my travel plans are
-            - what countries and cities I want to visit
-            - what time of year I plan to travel
-            - what types of events or places I want to visit
-        ---
-        PARAGRAPH
-        [USER_PROMPT] 
-        ---
-        Now list properties, attributes, qualities of clothes, footwear, and accessories you recommend for my endeavor. Be precise and short. Do not show your reasoning.";
+    private readonly string _tagsGenerationPromptTemplate = @"You will read a story of what I want. 
+---
+STORY
+[USER_PROMPT]
+---
+Now list characteristics of a person based on the story and  suggest clothes, footwear and accessories appropriate to the story.
+Be precise and short. Do not show your reasoning.";
 
     public ChatService(OpenAiService openAiService, MongoDbService mongoDbService, ILogger logger)
     {
@@ -212,15 +171,17 @@ public class ChatService
         }
     }
 
-    public async Task<string> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName)
+    public async Task<string> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string systemPrompt)
     {
 
         try
         {
             ArgumentNullException.ThrowIfNull(sessionId);
 
+            string prompt = string.IsNullOrWhiteSpace(systemPrompt) ? _tagsGenerationPromptTemplate : systemPrompt;
+
             // 1. Extend user prompt with predefined template with PARAGRAPH
-            string prompt = _tagsGenerationPromptTemplate.Replace("[USER_PROMPT]", userPrompt);
+            prompt = prompt.Replace("[USER_PROMPT]", userPrompt);
 
             // Get the most recent conversation history up to _maxConversationTokens
             //string conversation = GetConversationHistory(sessionId);
