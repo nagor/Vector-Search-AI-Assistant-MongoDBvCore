@@ -171,14 +171,7 @@
 
     private string? UserPrompt { get; set; }
 
-    private string? SystemPrompt { get; set; } =
-        @"You will read a story of what I want.
----
-STORY
-[USER_PROMPT]
----
-Now list characteristics of a person based on the story and suggest clothes, footwear and accessories appropriate to the story.
-Be precise and short. Do not show your reasoning.";
+    private string SystemPrompt { get; set; } = ChatService.SystemPromptTemplate;
 
     private string? UserPromptSet { get; set; }
 

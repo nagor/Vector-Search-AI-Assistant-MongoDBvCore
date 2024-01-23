@@ -19,13 +19,12 @@ public class ChatService
     private readonly int _maxCompletionTokens;
     private readonly ILogger _logger;
 
-    private readonly string _tagsGenerationPromptTemplate = @"You will read a story of what I want. 
+    public const string SystemPromptTemplate = @"Below is a story of a person who is trying to purchase some clothing.
 ---
 STORY
 [USER_PROMPT]
 ---
-Now list characteristics of a person based on the story and  suggest clothes, footwear and accessories appropriate to the story.
-Be precise and short. Do not show your reasoning.";
+Tell me who this person is and their needs. Suggests characteristics of the clothing this person might be interested in.";
 
     public ChatService(OpenAiService openAiService, MongoDbService mongoDbService, ILogger logger)
     {
@@ -178,7 +177,7 @@ Be precise and short. Do not show your reasoning.";
         {
             ArgumentNullException.ThrowIfNull(sessionId);
 
-            string prompt = string.IsNullOrWhiteSpace(systemPrompt) ? _tagsGenerationPromptTemplate : systemPrompt;
+            string prompt = string.IsNullOrWhiteSpace(systemPrompt) ? SystemPromptTemplate : systemPrompt;
 
             // 1. Extend user prompt with predefined template with PARAGRAPH
             prompt = prompt.Replace("[USER_PROMPT]", userPrompt);

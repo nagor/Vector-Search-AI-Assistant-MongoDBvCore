@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Bson.Serialization;
 using Newtonsoft.Json.Linq;
 using System.Collections;
+using System.Text;
 
 namespace SharedLib.Services;
 
@@ -440,7 +441,7 @@ public class MongoDbService
         }
     }
 
-    public async Task VectorizeAsync(string collectionName)
+    public async Task VectorizeClothesCollectionAsync(string collectionName)
     {
         try
         {
@@ -455,8 +456,18 @@ public class MongoDbService
                     var batch = cursor.Current;
                     foreach (BsonDocument document in batch)
                     {
+                        StringBuilder sb = new StringBuilder();
+                        sb.Append(document["Gender"]);
+                        sb.Append(" ");
+                        sb.Append(document["PrimaryColor"]);
+                        sb.Append(" ");
+                        sb.Append(document["ProductName"]);
+                        sb.Append(" ");
+                        sb.Append(document["Description"]);
+                        string contentToVectorize = sb.ToString();
+
                         //Vectorize item, add to vector property, save in collection.
-                        (float[] embeddings, int tokens) = await _openAiService.GetEmbeddingsAsync(string.Empty, document.ToString());
+                        (float[] embeddings, int tokens) = await _openAiService.GetEmbeddingsAsync(string.Empty, contentToVectorize);
 
                         document["vector"] = BsonValue.Create(embeddings);
 

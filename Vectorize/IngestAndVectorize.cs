@@ -129,7 +129,7 @@ namespace Vectorize
 
                 foreach(string collection in collections)
                 {
-                    await _mongo.VectorizeAsync(collection);
+                    await _mongo.VectorizeClothesCollectionAsync(collection);
                     _logger.LogInformation($"{collection} data vectorization complete.");
                 }
 
