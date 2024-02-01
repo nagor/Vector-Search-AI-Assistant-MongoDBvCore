@@ -15,8 +15,8 @@ class ProductsHelper {
         ProductsHelper.dotNetHelper = value;
     }
 
-    static async giveReasoning(product) {
-        await ProductsHelper.dotNetHelper.invokeMethodAsync('GiveProductReasoningAsync', product);
+    static async giveReasoning(product, userPromptMessageId, chatCompletionMessageId) {
+        await ProductsHelper.dotNetHelper.invokeMethodAsync('GiveProductReasoningAsync', product, userPromptMessageId, chatCompletionMessageId);
     }
 
     static async welcomeVisitor() {

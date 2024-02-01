@@ -279,19 +279,14 @@
     }
 
     [JSInvokable]
-    public async Task GiveProductReasoningAsync(long productId)
+    public async Task GiveProductReasoningAsync(long productId, Guid userPromptMessageId, Guid chatCompletionMessageId)
     {
         if (CurrentSession?.SessionId == Interface.EMPTY_SESSION)
         {
             return;
         }
 
-        if (CollectionName is null)
-        {
-            CollectionName = ChatService.DefaultCollection;
-        }
-
-        await chatService.GetProductReasoningAsync(CurrentSession?.SessionId, CollectionName, productId);
+        await chatService.GetProductReasoningAsync(CurrentSession?.SessionId, productId, userPromptMessageId, chatCompletionMessageId);
 
         await OnChatUpdated.InvokeAsync();
 

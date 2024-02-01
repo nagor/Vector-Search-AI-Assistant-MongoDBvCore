@@ -203,6 +203,9 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
             // Get embeddings for chat completion
             (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, embeddingsPattern);
 
+            // Create the completion message object to have it's id
+            Message chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens: ragTokens, text: String.Empty);
+
             //Do vector search on tags found by user prompt
             string retrievedDocuments = await _mongoDbService.VectorSearchAsync(collectionName, promptVectors);
 
@@ -218,7 +221,7 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
                     long productId = product.ProductID;
 
                     // Generate the link dynamically using Razor syntax
-                    return $"{productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning({productId})\">Why this product?</a>";
+                    return $"{productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning({productId}, '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a>";
                 });
 
             StringBuilder stringBuilder = new StringBuilder();
@@ -232,11 +235,11 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
 
             string completionTextWithProducts = stringBuilder.ToString();
 
-            //Create the completion message object
-            Message completionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens: ragTokens, completionTextWithProducts);
+            // once we have completion text with products, update it in model
+            chatCompletionMessage.Text = completionTextWithProducts;
 
             //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
-            await AddPromptCompletionMessagesAsync(sessionId, userPromptMessage, completionMessage);
+            await AddPromptCompletionMessagesAsync(sessionId, userPromptMessage, chatCompletionMessage);
 
             return completionTextWithProducts;
 
@@ -250,13 +253,13 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
         }
     }
 
-    public async Task GetProductReasoningAsync(string? sessionId, string collectionName, long productId)
+    public async Task GetProductReasoningAsync(string? sessionId, long productId, Guid userPromptMessageId, Guid chatCompletionMessageId)
     {
         ArgumentNullException.ThrowIfNull(sessionId);
 
-        var product = await _mongoDbService.FindClothesProduct(productId);
-        Console.WriteLine(product?.Description);
-
+        ClothesProduct? product = await _mongoDbService.GetClothesProductAsync(productId);
+        Message? userPromptMessage = await _mongoDbService.GetMessagesAsync(userPromptMessageId);
+        Message? chatCompletionMessage = await _mongoDbService.GetMessagesAsync(chatCompletionMessageId);
     }
 
     /// <summary>

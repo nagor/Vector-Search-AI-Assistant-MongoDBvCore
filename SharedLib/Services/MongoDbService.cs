@@ -378,26 +378,39 @@ public class MongoDbService
 
     }
 
-    public async Task<ClothesProduct?> FindClothesProduct(long productId)
+    public async Task<ClothesProduct?> GetClothesProductAsync(long productId)
     {
 
         try
         {
             var filter = Builders<ClothesProduct>.Filter.Eq("ProductID", productId);
-
-            // Use FindAsync to retrieve a single document based on the filter
             var clothesProduct = await _clothes.Find(filter).FirstOrDefaultAsync();
 
             return clothesProduct;
         }
         catch (MongoException ex)
         {
-            _logger.LogError($"Exception: FindClothesProduct(): {ex.Message}");
+            _logger.LogError("Exception: {ClothesProductAsync}: {ExMessage}", nameof(GetClothesProductAsync), ex.Message);
             throw;
 
         }
     }
 
+    public async Task<Message?> GetMessagesAsync(Guid messageId)
+    {
+        try
+        {
+            var filter = Builders<Message>.Filter.Eq(nameof(Message.Id), messageId);
+            var message = await _messages.Find(filter).FirstOrDefaultAsync();
+
+            return message;
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError("Exception: {MessagesAsyncName}: {ExMessage}", nameof(GetMessagesAsync), ex.Message);
+            throw;
+        }
+    }
 
     public async Task DeleteSalesOrderAsync(SalesOrder salesOrder)
     {
