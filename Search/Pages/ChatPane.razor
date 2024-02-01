@@ -156,6 +156,8 @@
 
 @code {
 
+    private DotNetObjectReference<ChatPane>? dotNetHelper;
+
     [Parameter]
     public EventCallback<string> OnChatUpdated { get; set; }
 
@@ -278,6 +280,12 @@
         await ScrollLastChatToView();
     }
 
+    [JSInvokable]
+    public async Task GiveReasoningAsync(long productId)
+    {
+        Console.WriteLine(CurrentSession.SessionId + " " + productId);
+    }
+
     private string GetChatSessionName() => CurrentSession switch
     {
         null => String.Empty,
@@ -287,6 +295,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("ProductsHelper.setDotNetHelper", dotNetHelper);
+        }
         await ScrollLastChatToView();
     }
 
@@ -296,5 +309,10 @@
     private async Task ScrollLastChatToView()
     {
         await JSRuntime.InvokeAsync<bool>("scrollToLastMessage");
+    }
+
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
     }
 }

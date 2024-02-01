@@ -223,7 +223,17 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
             // Deserialize BsonDocuments to a list of C# objects (ClothesProduct model)
             List<ClothesProduct> clothesProducts = ClothesProductExtensions.GetProducts(retrievedDocuments);
 
-            string formattedProducts = clothesProducts.ToFormattedString();
+            string formattedProducts = clothesProducts.ToFormattedString(
+                product =>
+                {
+                    string productStr = $"{product.ProductID}  {product.Price:C}  {product.ProductName}";
+
+                    // Assuming 'product.ProductID' is the parameter you want to pass to the ShowProductReasoning method
+                    long productId = product.ProductID;
+
+                    // Generate the link dynamically using Razor syntax
+                    return $"{productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning({productId})\">Why this product?</a>";
+                });
 
             StringBuilder stringBuilder = new StringBuilder();
 
