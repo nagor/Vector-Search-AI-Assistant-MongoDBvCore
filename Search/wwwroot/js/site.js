@@ -16,7 +16,7 @@ class ProductsHelper {
     }
 
     static async giveReasoning(product) {
-        await ProductsHelper.dotNetHelper.invokeMethodAsync('GiveReasoningAsync', product);
+        await ProductsHelper.dotNetHelper.invokeMethodAsync('GiveProductReasoningAsync', product);
     }
 
     static async welcomeVisitor() {

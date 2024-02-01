@@ -146,7 +146,7 @@
             <div class="input-group">
                 <i class="bi bi-body-text input-group-text" aria-hidden="true"></i>
                 <input class="form-control form-control-sm" type="text" @bind="@UserPromptSet" @onkeydown="@Enter" @oninput="@((e) => { UserPrompt=e.Value?.ToString();})" rows="1" placeholder="<Your Message>"></input>
-                <button type="button" class="btn btn-outline-secondary" @onclick="SubmitPromptAsync">
+                <button type="button" class="btn btn-outline-secondary" @onclick="SubmitUserPromptAsync">
                     <i class="bi bi-send-fill" aria-hidden="true"></i>
                 </button>
             </div>
@@ -177,15 +177,13 @@
 
     private string? UserPromptSet { get; set; }
 
-
-
     private string? CollectionName { get; set; }
 
     private List<Message>? _messagesInChat;
     private static event EventHandler<Session>? _onMessagePosted;
     private bool _loadingComplete;
 
-	async private Task ToggleNavMenu()
+    async private Task ToggleNavMenu()
     {
         await OnNavBarVisibilityUpdated.InvokeAsync();
     }
@@ -237,11 +235,11 @@
     {
         if (e.Code == "Enter" || e.Code == "NumpadEnter")
         {
-            await SubmitPromptAsync();
+            await SubmitUserPromptAsync();
         }
     }
 
-    private async Task SubmitPromptAsync()
+    private async Task SubmitUserPromptAsync()
     {
         if (CurrentSession?.SessionId == Interface.EMPTY_SESSION || UserPrompt == String.Empty || UserPrompt is null)
         {
@@ -255,7 +253,7 @@
 
         if (CollectionName is null)
         {
-            CollectionName = "clothes";
+            CollectionName = ChatService.DefaultCollection;
         }
 
         await chatService.GetChatCompletionProductSearchAsync(CurrentSession?.SessionId, UserPrompt, CollectionName, SystemPrompt);
@@ -281,11 +279,28 @@
     }
 
     [JSInvokable]
-    public async Task GiveReasoningAsync(long productId)
+    public async Task GiveProductReasoningAsync(long productId)
     {
-        Console.WriteLine(CurrentSession.SessionId + " " + productId);
-        var product = await chatService.GetClothesProduct(productId);
-        Console.WriteLine(product?.Description);
+        if (CurrentSession?.SessionId == Interface.EMPTY_SESSION || UserPrompt == String.Empty || UserPrompt is null)
+        {
+            return;
+        }
+
+        if (CollectionName is null)
+        {
+            CollectionName = ChatService.DefaultCollection;
+        }
+
+        await chatService.GetProductReasoningAsync(CurrentSession?.SessionId, UserPrompt, CollectionName, productId);
+
+        await OnChatUpdated.InvokeAsync();
+
+        if (_onMessagePosted is not null && CurrentSession is not null)
+        {
+            _onMessagePosted.Invoke(null, CurrentSession);
+        }
+
+        await ScrollLastChatToView();
     }
 
     private string GetChatSessionName() => CurrentSession switch

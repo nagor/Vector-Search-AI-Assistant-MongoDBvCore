@@ -19,6 +19,8 @@ public class ChatService
     private readonly int _maxCompletionTokens;
     private readonly ILogger _logger;
 
+    public const string DefaultCollection = "clothes";
+
     public const string SystemPromptTemplate = @"Below is a story of a person who is trying to purchase some clothing.
 ---
 STORY
@@ -76,11 +78,6 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
         }
 
         return chatMessages;
-    }
-
-    public async Task<ClothesProduct?> GetClothesProduct(long productId)
-    {
-        return await _mongoDbService.FindClothesProduct(productId);
     }
 
     /// <summary>
@@ -177,7 +174,6 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
 
     public async Task<string> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string systemPrompt)
     {
-
         try
         {
             ArgumentNullException.ThrowIfNull(sessionId);
@@ -267,6 +263,15 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
             throw;
 
         }
+    }
+
+    public async Task GetProductReasoningAsync(string? sessionId, string userPrompt, string collectionName, long productId)
+    {
+        ArgumentNullException.ThrowIfNull(sessionId);
+
+        var product = await _mongoDbService.FindClothesProduct(productId);
+        Console.WriteLine(product?.Description);
+
     }
 
     /// <summary>
