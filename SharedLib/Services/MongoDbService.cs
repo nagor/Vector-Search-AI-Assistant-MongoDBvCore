@@ -20,6 +20,7 @@ public class MongoDbService
     private readonly IMongoCollection<Product> _products;
     private readonly IMongoCollection<Customer> _customers;
     private readonly IMongoCollection<SalesOrder> _salesOrders;
+    private readonly IMongoCollection<ClothesProduct> _clothes;
     private readonly IMongoCollection<Session> _sessions;
     private readonly IMongoCollection<Message> _messages;
     private readonly string _vectorIndexType;
@@ -60,6 +61,7 @@ public class MongoDbService
         _products = _database.GetCollection<Product>("products");
         _customers = _database.GetCollection<Customer>("customers");
         _salesOrders = _database.GetCollection<SalesOrder>("salesOrders");
+        _clothes = _database.GetCollection<ClothesProduct>("clothes");
         _sessions = _database.GetCollection<Session>("completions");
         _messages = _database.GetCollection<Message>("completions");
 
@@ -375,6 +377,27 @@ public class MongoDbService
         return salesOrder;
 
     }
+
+    public async Task<ClothesProduct?> FindClothesProduct(long productId)
+    {
+
+        try
+        {
+            var filter = Builders<ClothesProduct>.Filter.Eq("ProductID", productId);
+
+            // Use FindAsync to retrieve a single document based on the filter
+            var clothesProduct = await _clothes.Find(filter).FirstOrDefaultAsync();
+
+            return clothesProduct;
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError($"Exception: FindClothesProduct(): {ex.Message}");
+            throw;
+
+        }
+    }
+
 
     public async Task DeleteSalesOrderAsync(SalesOrder salesOrder)
     {

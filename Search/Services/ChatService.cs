@@ -78,6 +78,11 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
         return chatMessages;
     }
 
+    public async Task<ClothesProduct?> GetClothesProduct(long productId)
+    {
+        return await _mongoDbService.FindClothesProduct(productId);
+    }
+
     /// <summary>
     /// User creates a new Chat Session.
     /// </summary>

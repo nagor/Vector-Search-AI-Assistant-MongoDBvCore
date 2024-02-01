@@ -7,7 +7,10 @@ namespace SharedLib.Models;
 
 public class ClothesProduct
 {
-    //[BsonId]
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string id { get; set; }
+
     [BsonRepresentation(BsonType.Int64)]
     public long ProductID { get; set; }
 
@@ -18,6 +21,8 @@ public class ClothesProduct
     public int NumImages { get; set; }
     public string Description { get; set; }
     public string PrimaryColor { get; set; }
+
+    public float[]? vector { get; set; }
 }
 public static class ClothesProductExtensions
 {

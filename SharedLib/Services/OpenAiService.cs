@@ -186,7 +186,7 @@ public class OpenAiService
                 },
                 MaxTokens = _maxCompletionTokens,
                 User = sessionId,
-                Temperature = 0.3f,
+                Temperature = 0.2f,
                 NucleusSamplingFactor = 0.95f,
                 FrequencyPenalty = 0,
                 PresencePenalty = 0

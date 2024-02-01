@@ -284,6 +284,8 @@
     public async Task GiveReasoningAsync(long productId)
     {
         Console.WriteLine(CurrentSession.SessionId + " " + productId);
+        var product = await chatService.GetClothesProduct(productId);
+        Console.WriteLine(product?.Description);
     }
 
     private string GetChatSessionName() => CurrentSession switch
