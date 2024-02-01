@@ -34,7 +34,8 @@ public class OpenAiService
 //
 //         Text of relevant information:";
     private readonly string _systemPromptRetailAssistant = @"
-        You are an intelligent assistant for the Cool Clothes and Accessories Company selling men's and women's wear, footwear, and accessories.
+        You are an intelligent assistant for a store selling men's and women's apparel.
+        Based on customer's story you will generate a list of attributes of apparel they need.
 
         Instructions:
             - If you're unsure of an answer, please ask the user to clarify their story.

@@ -195,25 +195,10 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
             // Generate the completion from Azure OpenAI to have product tags
             (string completionText, int ragTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPrompt, documents: augmentedContent);
 
-            //string embeddingsPattern = "Men's." + completionText;
             string embeddingsPattern = completionText;
 
-            // Regular expression pattern
-            //string pattern = @"TAGS:(.*?)(\n|$)";
-            // string pattern = @"TAGS:(.*?)(:TAGS|$)";
-            //
-            // // Match the pattern
-            // Match match = Regex.Match(completionText, pattern, RegexOptions.Singleline);
-            //
-            // string embeddingsPattern = userPrompt;
-            // // Check if a match is found
-            // if (match.Success)
-            // {
-            //     embeddingsPattern = match.Groups[1].Value.Trim();
-            // }
-
-            //Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
-            Message promptMessage = new Message(sessionId, nameof(Participants.User), tokens: completionTokens, promptTokens: default, text: userPrompt);
+            // Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
+            Message userPromptMessage = new Message(sessionId, sender: nameof(Participants.User), tokens: completionTokens, promptTokens: default, text: userPrompt);
 
             // Get embeddings for chat completion
             (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, embeddingsPattern);
@@ -251,7 +236,7 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
             Message completionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens: ragTokens, completionTextWithProducts);
 
             //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
-            await AddPromptCompletionMessagesAsync(sessionId, promptMessage, completionMessage);
+            await AddPromptCompletionMessagesAsync(sessionId, userPromptMessage, completionMessage);
 
             return completionTextWithProducts;
 
@@ -265,7 +250,7 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
         }
     }
 
-    public async Task GetProductReasoningAsync(string? sessionId, string userPrompt, string collectionName, long productId)
+    public async Task GetProductReasoningAsync(string? sessionId, string collectionName, long productId)
     {
         ArgumentNullException.ThrowIfNull(sessionId);
 
@@ -411,23 +396,23 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
     /// <summary>
     /// Add user prompt and AI assistance response to the chat session message list object and insert into the data service as a transaction.
     /// </summary>
-    private async Task AddPromptCompletionMessagesAsync(string sessionId, Message promptMessage, Message completionMessage)
+    private async Task AddPromptCompletionMessagesAsync(string sessionId, Message userPromptMessage, Message chatCompletionMessage)
     {
 
         int index = _sessions.FindIndex(s => s.SessionId == sessionId);
 
 
         //Add prompt and completion to the cache
-        _sessions[index].AddMessage(promptMessage);
-        _sessions[index].AddMessage(completionMessage);
+        _sessions[index].AddMessage(userPromptMessage);
+        _sessions[index].AddMessage(chatCompletionMessage);
 
 
         //Update session cache with tokens used
-        _sessions[index].TokensUsed += promptMessage.Tokens;
-        _sessions[index].TokensUsed += completionMessage.PromptTokens;
-        _sessions[index].TokensUsed += completionMessage.Tokens;
+        _sessions[index].TokensUsed += userPromptMessage.Tokens;
+        _sessions[index].TokensUsed += chatCompletionMessage.PromptTokens;
+        _sessions[index].TokensUsed += chatCompletionMessage.Tokens;
 
-        await _mongoDbService.UpsertSessionBatchAsync(session: _sessions[index], promptMessage: promptMessage, completionMessage: completionMessage);
+        await _mongoDbService.UpsertSessionBatchAsync(session: _sessions[index], promptMessage: userPromptMessage, completionMessage: chatCompletionMessage);
 
     }
 }

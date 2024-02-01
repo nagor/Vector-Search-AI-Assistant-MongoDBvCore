@@ -281,7 +281,7 @@
     [JSInvokable]
     public async Task GiveProductReasoningAsync(long productId)
     {
-        if (CurrentSession?.SessionId == Interface.EMPTY_SESSION || UserPrompt == String.Empty || UserPrompt is null)
+        if (CurrentSession?.SessionId == Interface.EMPTY_SESSION)
         {
             return;
         }
@@ -291,7 +291,7 @@
             CollectionName = ChatService.DefaultCollection;
         }
 
-        await chatService.GetProductReasoningAsync(CurrentSession?.SessionId, UserPrompt, CollectionName, productId);
+        await chatService.GetProductReasoningAsync(CurrentSession?.SessionId, CollectionName, productId);
 
         await OnChatUpdated.InvokeAsync();
 
