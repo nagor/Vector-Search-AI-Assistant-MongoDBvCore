@@ -23,11 +23,16 @@ public static class ClothesProductExtensions
 {
     public static string ToFormattedString(this List<ClothesProduct> clothesProducts)
     {
+        return ToFormattedString(clothesProducts, formattedProduct: product => $"{product.ProductID}  {product.Price:C}  {product.ProductName}");
+    }
+
+    public static string ToFormattedString(this List<ClothesProduct> clothesProducts, Func<ClothesProduct, string> formattedProduct)
+    {
         StringBuilder stringBuilder = new StringBuilder();
 
         foreach (var product in clothesProducts)
         {
-            stringBuilder.AppendLine($"{product.ProductID}  {product.Price:C}  {product.ProductName}");
+            stringBuilder.AppendLine(formattedProduct(product));
         }
 
         return stringBuilder.ToString();
