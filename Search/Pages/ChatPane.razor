@@ -86,7 +86,7 @@
                             Get Started
                         </h4>
                         <p class="text-nowrap mb-0 fst-italic">
-                            AI Retail Assistant is here to answer your product, customer and sales order questions.
+                            AI Retail Assistant is here to answer your product questions.
                         </p>
                     </div>
                 }
@@ -133,15 +133,15 @@
     <div class="bg-primary text-light px-4 py-2 rounded-top-5 text-dark d-flex flex-column justify-content-center">
         @if (CurrentSession?.SessionId != Interface.EMPTY_SESSION)
         {
-            <div class="bg-primary text-light px-2 py-2">
-                <label for="dropdown"><strong class="">Select Data:</strong></label>
-                <select id="collectionName" name="collectionName" @bind="@CollectionName" class="">
-                    <option value="clothes">Clothes</option>
-                    <option value="products">Products</option>
-                    <option value="customers">Customers</option>
-                    <option value="salesOrders">Sales Orders</option>
-                </select>
-            </div>
+            @* <div class="bg-primary text-light px-2 py-2"> *@
+            @*     <label for="dropdown"><strong class="">Select Data:</strong></label> *@
+            @*     <select id="collectionName" name="collectionName" @bind="@CollectionName" class=""> *@
+            @*         <option value="clothes">Clothes</option> *@
+            @*         <option value="products">Products</option> *@
+            @*         <option value="customers">Customers</option> *@
+            @*         <option value="salesOrders">Sales Orders</option> *@
+            @*     </select> *@
+            @* </div> *@
 
             <div class="input-group">
                 <i class="bi bi-body-text input-group-text" aria-hidden="true"></i>
