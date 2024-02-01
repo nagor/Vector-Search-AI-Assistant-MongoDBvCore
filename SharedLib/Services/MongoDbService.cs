@@ -647,8 +647,9 @@ public class MongoDbService
     /// <summary>
     /// Batch create or update chat messages and session.
     /// </summary>
+    /// <param name="session">Session</param>
     /// <param name="messages">Chat message and session items to create or replace.</param>
-    public async Task UpsertSessionBatchAsync(Session session, Message promptMessage, Message completionMessage)
+    public async Task UpsertSessionBatchAsync(Session session, params Message[] messages)
     {
         using (var transaction = await _client.StartSessionAsync())
         {
@@ -663,15 +664,17 @@ public class MongoDbService
                         & Builders<Session>.Filter.Eq("Id", session.Id),
                     replacement: session);
 
-                await _messages.InsertOneAsync(promptMessage);
-                await _messages.InsertOneAsync(completionMessage);
+                foreach (var message in messages)
+                {
+                    await _messages.InsertOneAsync(message);
+                }
 
                 await transaction.CommitTransactionAsync();
             }
             catch (MongoException ex)
             {
                 await transaction.AbortTransactionAsync();
-                _logger.LogError($"Exception: UpsertSessionBatchAsync(): {ex.Message}");
+                _logger.LogError("Exception: {UpsertSessionBatchAsyncName}: {ExMessage}", nameof(UpsertSessionBatchAsync), ex.Message);
                 throw;
             }
         }

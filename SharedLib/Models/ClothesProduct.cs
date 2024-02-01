@@ -43,6 +43,11 @@ public static class ClothesProductExtensions
         return stringBuilder.ToString();
     }
 
+    public static string ToFormattedString(this ClothesProduct product)
+    {
+        return $"{product.ProductID} {product.Price:C} {product.ProductName}\n{product.ProductBrand} {product.Gender} {product.PrimaryColor}\n{product.Description}";
+    }
+
     public static List<ClothesProduct> GetProducts(string bsonData)
     {
         // Convert BSON string to a list of BsonDocuments

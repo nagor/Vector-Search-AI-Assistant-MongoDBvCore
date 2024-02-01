@@ -21,12 +21,37 @@ public class ChatService
 
     public const string DefaultCollection = "clothes";
 
+    private const string UserPromptMarker = "[USER_PROMPT]";
+    private const string ChatCompletionMarker = "[CHAT_COMPLETION]";
+    private const string ProductMarker = "[PRODUCT]";
+
     public const string SystemPromptTemplate = @"Below is a story of a person who is trying to purchase some clothing.
 ---
 STORY
 [USER_PROMPT]
 ---
 Tell me who this person is and their needs. Suggests characteristics of the clothing this person might be interested in.";
+
+    private const string ProductReasoningTemplate = @"Below is my story. I am trying to purchase apparel:
+---
+STORY
+[USER_PROMPT]
+---
+Bellow is what product I picked:
+---
+PRODUCT
+[PRODUCT]
+---
+Now tell me why you think I may like the product. Explain your reasoning.
+";
+
+    private const string WhyLikeProductTemplate = @"
+Why you may like it?
+
+[PRODUCT]
+
+[CHAT_COMPLETION]
+";
 
     public ChatService(OpenAiService openAiService, MongoDbService mongoDbService, ILogger logger)
     {
@@ -172,7 +197,7 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
         }
     }
 
-    public async Task<string> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string systemPrompt)
+    public async Task GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string systemPrompt)
     {
         try
         {
@@ -181,7 +206,7 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
             string prompt = string.IsNullOrWhiteSpace(systemPrompt) ? SystemPromptTemplate : systemPrompt;
 
             // 1. Extend user prompt with predefined template with PARAGRAPH
-            prompt = prompt.Replace("[USER_PROMPT]", userPrompt);
+            prompt = prompt.Replace(UserPromptMarker, userPrompt);
 
             // Get the most recent conversation history up to _maxConversationTokens
             //string conversation = GetConversationHistory(sessionId);
@@ -241,25 +266,61 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
             //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
             await AddPromptCompletionMessagesAsync(sessionId, userPromptMessage, chatCompletionMessage);
 
-            return completionTextWithProducts;
-
         }
         catch (Exception ex)
         {
-            string message = $"ChatService.GetChatCompletionAsync(): {ex.Message}";
-            _logger.LogError(message);
+            _logger.LogError("{ChatCompletionProductSearchAsyncName}: {ExMessage}", nameof(GetChatCompletionProductSearchAsync), ex.Message);
             throw;
-
         }
     }
 
     public async Task GetProductReasoningAsync(string? sessionId, long productId, Guid userPromptMessageId, Guid chatCompletionMessageId)
     {
-        ArgumentNullException.ThrowIfNull(sessionId);
+        try
+        {
+            ArgumentNullException.ThrowIfNull(sessionId);
 
-        ClothesProduct? product = await _mongoDbService.GetClothesProductAsync(productId);
-        Message? userPromptMessage = await _mongoDbService.GetMessagesAsync(userPromptMessageId);
-        Message? chatCompletionMessage = await _mongoDbService.GetMessagesAsync(chatCompletionMessageId);
+            ClothesProduct? product = await _mongoDbService.GetClothesProductAsync(productId);
+            ArgumentNullException.ThrowIfNull(product);
+            Message? userPromptMessage = await _mongoDbService.GetMessagesAsync(userPromptMessageId);
+            ArgumentNullException.ThrowIfNull(userPromptMessage);
+
+            string productCard = product.ToFormattedString();
+            string userMessage = userPromptMessage.Text;
+
+            string prompt = ProductReasoningTemplate
+                .Replace(UserPromptMarker, userMessage)
+                .Replace(ProductMarker, productCard);
+
+            // TODO: trim prompt if needed
+            // (string augmentedContent, string conversationAndUserPrompt) =
+            //     BuildPrompts(prompt, conversation: "", retrievedData: "");
+
+
+            // Generate the completion from Azure OpenAI to have product tags
+            (string completionText, int ragTokens, int completionTokens) =
+                await _openAiService.GetChatCompletionAsync(
+                    sessionId,
+                    prompt, // conversationAndUserPrompt,
+                    documents: "" // augmentedContent
+                    );
+
+            string message = WhyLikeProductTemplate
+                .Replace(ProductMarker, productCard)
+                .Replace(ChatCompletionMarker, completionText);
+
+            // Create the completion message object to have it's id
+            Message? chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens,
+                promptTokens: ragTokens, text: message);
+
+            //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
+            await AddPromptCompletionMessagesAsync(sessionId, chatCompletionMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("{GetProductReasoningAsyncName}: {ExMessage}", nameof(GetProductReasoningAsync), ex.Message);
+            throw;
+        }
     }
 
     /// <summary>
@@ -415,7 +476,24 @@ Tell me who this person is and their needs. Suggests characteristics of the clot
         _sessions[index].TokensUsed += chatCompletionMessage.PromptTokens;
         _sessions[index].TokensUsed += chatCompletionMessage.Tokens;
 
-        await _mongoDbService.UpsertSessionBatchAsync(session: _sessions[index], promptMessage: userPromptMessage, completionMessage: chatCompletionMessage);
+        await _mongoDbService.UpsertSessionBatchAsync(session: _sessions[index], userPromptMessage, chatCompletionMessage);
+
+    }
+    private async Task AddPromptCompletionMessagesAsync(string sessionId, Message chatCompletionMessage)
+    {
+
+        int index = _sessions.FindIndex(s => s.SessionId == sessionId);
+
+
+        //Add prompt and completion to the cache
+        _sessions[index].AddMessage(chatCompletionMessage);
+
+
+        //Update session cache with tokens used
+        _sessions[index].TokensUsed += chatCompletionMessage.PromptTokens;
+        _sessions[index].TokensUsed += chatCompletionMessage.Tokens;
+
+        await _mongoDbService.UpsertSessionBatchAsync(session: _sessions[index], chatCompletionMessage);
 
     }
 }
