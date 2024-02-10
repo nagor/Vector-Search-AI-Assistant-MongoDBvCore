@@ -63,7 +63,6 @@ public class ImageToDescriptionProcessor
                     double timeTakenMs = stopwatch.Elapsed.TotalMilliseconds;
 
                     string? message;
-                    counter++;
                     responseStr = await response.Content.ReadAsStringAsync();
                     if (response.IsSuccessStatusCode)
                     {
@@ -93,6 +92,7 @@ public class ImageToDescriptionProcessor
                         };
 
                         succeed = true;
+                        counter++;
                     }
                     else
                     {

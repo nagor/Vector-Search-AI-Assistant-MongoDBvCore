@@ -74,7 +74,7 @@ public class DocumentProcessor
         }
 
 
-        Console.WriteLine($"Processed {batchCount} batches of {batchSize} documents.");
+        Console.WriteLine($"Processed {batch.Count} documents.");
         Console.WriteLine($"Total prompt tokens {promptTokensTotal}, total completion tokens {completionTokensTotal}.");
     }
 

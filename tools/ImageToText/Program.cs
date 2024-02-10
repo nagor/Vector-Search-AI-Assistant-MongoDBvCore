@@ -27,5 +27,3 @@ await documentProcessor.ProcessDocumentsInBatchesAsync();
 stopwatch.Stop();
 double timeTakenMin = stopwatch.Elapsed.TotalMinutes;
 Console.WriteLine($"Total time taken: {timeTakenMin} min");
-
-Console.ReadLine();
