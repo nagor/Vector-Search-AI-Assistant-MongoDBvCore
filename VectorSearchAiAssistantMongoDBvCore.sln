@@ -21,6 +21,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{C181E388
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageToText", "tools\ImageToText\ImageToText.csproj", "{E6CB55B7-083C-4B02-A6D4-C154315A83F8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VectorizeDescription", "tools\VectorizeDescription\VectorizeDescription.csproj", "{1DBD8E74-E6FB-4B5A-AEDA-FDFFFC12A362}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +45,10 @@ Global
 		{E6CB55B7-083C-4B02-A6D4-C154315A83F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E6CB55B7-083C-4B02-A6D4-C154315A83F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E6CB55B7-083C-4B02-A6D4-C154315A83F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1DBD8E74-E6FB-4B5A-AEDA-FDFFFC12A362}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1DBD8E74-E6FB-4B5A-AEDA-FDFFFC12A362}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1DBD8E74-E6FB-4B5A-AEDA-FDFFFC12A362}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1DBD8E74-E6FB-4B5A-AEDA-FDFFFC12A362}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -52,5 +58,6 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E6CB55B7-083C-4B02-A6D4-C154315A83F8} = {C181E388-6304-4EB3-8B54-D12435A28CC1}
+		{1DBD8E74-E6FB-4B5A-AEDA-FDFFFC12A362} = {C181E388-6304-4EB3-8B54-D12435A28CC1}
 	EndGlobalSection
 EndGlobal
