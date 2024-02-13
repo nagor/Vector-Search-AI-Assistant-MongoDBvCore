@@ -1,3 +1,4 @@
+using System.Text;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -8,20 +9,19 @@ public class DocumentProcessor
     private readonly IMongoCollection<BsonDocument> _collection;
     private readonly MongoClient _client;
     private readonly IMongoDatabase _database;
-    //private readonly ImageToDescriptionProcessor _imageToDescriptionProcessor;
+    private readonly DescriptionToVectorProcessor _descriptionToVectorProcessor;
 
     public DocumentProcessor(string mongoDbConnection, string databaseName, string collectionName,
-        string gpt4VisionEndpoint, string gpt4VisionKey)
+        DescriptionToVectorProcessor descriptionToVectorProcessor)
     {
+        _descriptionToVectorProcessor = descriptionToVectorProcessor;
         _client = new MongoClient(mongoDbConnection);
         _database = _client.GetDatabase(databaseName);
         _collection = _database.GetCollection<BsonDocument>(collectionName);
-        //_imageToDescriptionProcessor = new ImageToDescriptionProcessor(gpt4VisionEndpoint, gpt4VisionKey);
     }
 
     public async Task ProcessDocumentsInBatchesAsync()
     {
-        // TODO: batch doesn't seem to be working, still get cursor not found.
         var batchSize = 2000;
         var batchCount = 0;
 
@@ -30,12 +30,12 @@ public class DocumentProcessor
         var projection = Builders<BsonDocument>.Projection
             .Include("_id")
             .Include("data.id")
-            // TODO: get fields to vectorize
-            //.Include("data.styleImages.default.imageURL")
-            ;
+            .Include("data.gender")
+            .Include("data.baseColour")
+            .Include("data.productDisplayName")
+            .Include("data.description");
 
         int promptTokensTotal = 0;
-        int completionTokensTotal = 0;
 
         // TODO: batch doesn't seem to be working, still get cursor not found.
         // using (var cursor = await _collection.FindAsync(filter, new FindOptions<BsonDocument>
@@ -69,43 +69,50 @@ public class DocumentProcessor
         var batch = cursor.Current.ToList();
         if (batch.Any())
         {
-            var (batchPromptTokens, batchCompletionTokens) = await ProcessBatchAsync(batch);
+            int batchPromptTokens = await ProcessBatchAsync(batch);
             promptTokensTotal += batchPromptTokens;
-            completionTokensTotal += batchCompletionTokens;
             batchCount++;
         }
 
 
         Console.WriteLine($"Processed {batch.Count} documents.");
-        Console.WriteLine($"Total prompt tokens {promptTokensTotal}, total completion tokens {completionTokensTotal}.");
+        Console.WriteLine($"Total prompt tokens {promptTokensTotal}.");
     }
 
-    private async Task<(int, int)> ProcessBatchAsync(ICollection<BsonDocument> batch)
+    private async Task<int> ProcessBatchAsync(ICollection<BsonDocument> batch)
     {
-        Console.WriteLine($"Processing {batch.Count} documents");
+        Console.WriteLine($"Processing {batch.Count.ToString()} documents");
 
-        // List<Image> images = batch.Select(doc => new Image
-        //     {
-        //         DocumentId = doc["_id"].AsObjectId,
-        //         Id = doc["data"]["id"].AsInt32,
-        //         Url = doc["data"]["styleImages"]["default"]["imageURL"].AsString
-        //     }
-        // ).ToList();
+
+        List<Document> documents = batch.Select(doc =>
+        {
+            Document document = new Document { DocumentId = doc["_id"].AsObjectId };
+
+            StringBuilder sb = new StringBuilder();
+            sb.Append(doc["data"]["gender"].AsString);
+            sb.Append(" ");
+            sb.Append(doc["data"]["baseColour"].AsString);
+            sb.Append(" ");
+            sb.Append(doc["data"]["productDisplayName"].AsString);
+            sb.Append(" ");
+            sb.AppendLine(doc["data"]["description"].AsString);
+
+            document.ExtendedDescription = sb.ToString();
+
+            return document;
+        }).ToList();
 
         int promptTokensTotal = 0;
-        int completionTokensTotal = 0;
 
+        await foreach (var imageProcessingResult in _descriptionToVectorProcessor.Process(documents))
+        {
+            promptTokensTotal = imageProcessingResult.PromptTokensRunningTotal;
 
-        // await foreach (var imageProcessingResult in _imageToDescriptionProcessor.Process(images))
-        // {
-        //     promptTokensTotal = imageProcessingResult.PromptTokensRunningTotal;
-        //     completionTokensTotal = imageProcessingResult.CompletionTokensRunningTotal;
-        //
-        //     await _collection.UpdateOneAsync(
-        //         Builders<BsonDocument>.Filter.Eq("_id", imageProcessingResult.Image.DocumentId),
-        //         Builders<BsonDocument>.Update.Set("data.description", imageProcessingResult.Description));
-        // }
+            await _collection.UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("_id", imageProcessingResult.Document.DocumentId),
+                Builders<BsonDocument>.Update.Set("data.vector", imageProcessingResult.Vectors));
+        }
 
-        return (promptTokensTotal, completionTokensTotal);
+        return promptTokensTotal;
     }
 }

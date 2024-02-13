@@ -123,10 +123,10 @@ public class OpenAiService
     /// <summary>
     /// Sends a prompt to the deployed OpenAI embeddings model and returns an array of vectors as a response.
     /// </summary>
-    /// <param name="sessionId">Chat session identifier for the current conversation.</param>
-    /// <param name="prompt">Prompt message to generated embeddings on.</param>
+    /// <param name="userId">Identifier for the current conversation.</param>
+    /// <param name="input">Prompt message to generated embeddings on.</param>
     /// <returns>Response from the OpenAI model as an array of vectors along with tokens for the prompt and response.</returns>
-    public async Task<(float[] vectors, int promptTokens)> GetEmbeddingsAsync(string sessionId, string input)
+    public async Task<(float[] vectors, int promptTokens)> GetEmbeddingsAsync(string userId, string input)
     {
 
         float[] embedding = new float[0];
@@ -136,7 +136,7 @@ public class OpenAiService
         {
             EmbeddingsOptions options = new EmbeddingsOptions(_embeddingsModelOrDeployment, new List<string> { input })
             {
-                User = sessionId
+                User = userId
             };
 
 

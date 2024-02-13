@@ -21,7 +21,6 @@ public class DocumentProcessor
 
     public async Task ProcessDocumentsInBatchesAsync()
     {
-        // TODO: batch doesn't seem to be working, still get cursor not found.
         var batchSize = 2000;
         var batchCount = 0;
 
@@ -80,10 +79,7 @@ public class DocumentProcessor
 
     private async Task<(int, int)> ProcessBatchAsync(ICollection<BsonDocument> batch)
     {
-        // await Task.Delay(TimeSpan.FromSeconds(10)); // Simulating processing time
-        // return (1,2);
-
-        Console.WriteLine($"Processing {batch.Count} documents");
+        Console.WriteLine($"Processing {batch.Count.ToString()} documents");
 
         List<Image> images = batch.Select(doc => new Image
             {
