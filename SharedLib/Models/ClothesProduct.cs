@@ -5,30 +5,42 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace SharedLib.Models;
 
+[BsonIgnoreExtraElements]
 public class ClothesProduct
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string id { get; set; }
+    [BsonId] public ObjectId Id { get; set; }
 
-    [BsonRepresentation(BsonType.Int64)]
-    public long ProductID { get; set; }
+    [BsonElement("id")]
+    public long ProductId { get; set; }
 
+    [BsonElement("productDisplayName")]
     public string ProductName { get; set; }
+
+    [BsonElement("brandName")]
     public string ProductBrand { get; set; }
+
+    [BsonElement("gender")]
     public string Gender { get; set; }
+
+    [BsonElement("price")]
     public double Price { get; set; }
-    public int NumImages { get; set; }
+
+    [BsonElement("description")]
     public string Description { get; set; }
+
+    [BsonElement("baseColour")]
     public string PrimaryColor { get; set; }
 
-    public float[]? vector { get; set; }
+    [BsonElement("imageUrl")]
+    public string ImageUrl { get; set; }
+
 }
+
 public static class ClothesProductExtensions
 {
     public static string ToFormattedString(this List<ClothesProduct> clothesProducts)
     {
-        return ToFormattedString(clothesProducts, formattedProduct: product => $"{product.ProductID}  {product.Price:C}  {product.ProductName}");
+        return ToFormattedString(clothesProducts, formattedProduct: product => $"{product.ProductId}  {product.Price:C}  {product.ProductName}");
     }
 
     public static string ToFormattedString(this List<ClothesProduct> clothesProducts, Func<ClothesProduct, string> formattedProduct)
@@ -45,7 +57,7 @@ public static class ClothesProductExtensions
 
     public static string ToFormattedString(this ClothesProduct product)
     {
-        return $"{product.ProductID} {product.Price:C} {product.ProductName}\n{product.ProductBrand} {product.Gender} {product.PrimaryColor}\n{product.Description}";
+        return $"{product.ProductId} {product.Price:C} {product.ProductName}\n{product.ProductBrand} {product.Gender} {product.PrimaryColor}\n{product.Description}";
     }
 
     public static List<ClothesProduct> GetProducts(string bsonData)

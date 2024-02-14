@@ -240,10 +240,9 @@ Why you may like it?
             string formattedProducts = clothesProducts.ToFormattedString(
                 product =>
                 {
-                    string productStr = $"{product.ProductID}  {product.Price:C}  {product.ProductName}";
+                    string productStr = $"{product.ProductId}  {product.Price:C}  {product.ProductName}";
 
-                    // Assuming 'product.ProductID' is the parameter you want to pass to the ShowProductReasoning method
-                    long productId = product.ProductID;
+                    long productId = product.ProductId;
 
                     // Generate the link dynamically using Razor syntax
                     return $"{productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning({productId}, '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a>";

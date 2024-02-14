@@ -219,8 +219,25 @@ public class MongoDbService
                     {
                         "$project", new BsonDocument
                         {
-                            { "_id", 0 },
-                            { "vector", 0 }
+                            // either include only needed, or exclude something not needed, not both
+                            { "_id", 1 },
+                            // map fields
+                            {"id", "$data.id"},
+                            {"imageUrl", "$data.styleImages.default.imageURL"},
+                            {"productDisplayName", "$data.productDisplayName"},
+                            {"brandName", "$data.brandName"},
+                            {"gender", "$data.gender"},
+                            {"price", "$data.price"},
+                            {"description", "$data.description"},
+                            {"baseColour", "$data.baseColour"}
+                            // exclude
+                            // { "notification", 0 },
+                            // { "meta", 0 },
+                            // { "vector", 0 },
+                            // {"data.articleAttributes", 0},
+                            // {"data.crossLinks", 0},
+                            // {"data.brandUserProfile", 0},
+                            // {"data.vector", 0},
                         }
                     }
                 }
@@ -383,8 +400,39 @@ public class MongoDbService
 
         try
         {
-            var filter = Builders<ClothesProduct>.Filter.Eq("ProductID", productId);
-            var clothesProduct = await _clothes.Find(filter).FirstOrDefaultAsync();
+            var pipeline = new BsonDocument[]
+            {
+                new BsonDocument("$match", new BsonDocument("data.id", productId)),
+                new BsonDocument("$project", new BsonDocument
+                {
+                    // either include only needed, or exclude something not needed, not both
+                    { "_id", 1 },
+                    // map fields
+                    {"id", "$data.id"},
+                    {"imageUrl", "$data.styleImages.default.imageURL"},
+                    {"productDisplayName", "$data.productDisplayName"},
+                    {"brandName", "$data.brandName"},
+                    {"gender", "$data.gender"},
+                    {"price", "$data.price"},
+                    {"description", "$data.description"},
+                    {"baseColour", "$data.baseColour"}
+                    // exclude
+                    // { "notification", 0 },
+                    // { "meta", 0 },
+                    // { "vector", 0 },
+                    // {"data.articleAttributes", 0},
+                    // {"data.crossLinks", 0},
+                    // {"data.brandUserProfile", 0},
+                    // {"data.vector", 0},
+                })
+            };
+
+
+            BsonDocument? clothesProductBson = await _clothes.Aggregate<BsonDocument>(pipeline).FirstOrDefaultAsync();
+            if (clothesProductBson == null)
+                return null;
+
+            var clothesProduct = BsonSerializer.Deserialize<ClothesProduct>(clothesProductBson);
 
             return clothesProduct;
         }
