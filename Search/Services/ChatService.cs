@@ -245,7 +245,7 @@ Why you may like it?
                     long productId = product.ProductId;
 
                     // Generate the link dynamically using Razor syntax
-                    return $"{productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning({productId}, '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a>";
+                    return $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail5\"> {productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning({productId}, '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a>";
                 });
 
             StringBuilder stringBuilder = new StringBuilder();
@@ -284,7 +284,7 @@ Why you may like it?
             Message? userPromptMessage = await _mongoDbService.GetMessagesAsync(userPromptMessageId);
             ArgumentNullException.ThrowIfNull(userPromptMessage);
 
-            string productCard = product.ToFormattedString();
+            string productCard = $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail15\"><br/>" + product.ToFormattedString();
             string userMessage = userPromptMessage.Text;
 
             string prompt = ProductReasoningTemplate
