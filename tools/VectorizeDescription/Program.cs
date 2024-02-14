@@ -42,7 +42,7 @@ DescriptionToVectorProcessor descriptionToVectorProcessor = new DescriptionToVec
 DocumentProcessor documentProcessor = new DocumentProcessor(
     mongoDbConnection,
     databaseName: "retaildb",
-    collectionName: "test",
+    collectionName: "clothes",
     descriptionToVectorProcessor);
 await documentProcessor.ProcessDocumentsInBatchesAsync();
 

@@ -25,8 +25,8 @@ public class DocumentProcessor
         var batchSize = 2000;
         var batchCount = 0;
 
-        var filter = Builders<BsonDocument>.Filter.Eq("data.vector", BsonNull.Value) |
-                     Builders<BsonDocument>.Filter.Eq("data.vector", "");
+        var filter = Builders<BsonDocument>.Filter.Eq("vector", BsonNull.Value) |
+                     Builders<BsonDocument>.Filter.Eq("vector", "");
         var projection = Builders<BsonDocument>.Projection
             .Include("_id")
             .Include("data.id")
@@ -110,7 +110,7 @@ public class DocumentProcessor
 
             await _collection.UpdateOneAsync(
                 Builders<BsonDocument>.Filter.Eq("_id", imageProcessingResult.Document.DocumentId),
-                Builders<BsonDocument>.Update.Set("data.vector", imageProcessingResult.Vectors));
+                Builders<BsonDocument>.Update.Set("vector", imageProcessingResult.Vectors));
         }
 
         return promptTokensTotal;
