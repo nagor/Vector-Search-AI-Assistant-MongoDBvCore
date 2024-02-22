@@ -11,6 +11,18 @@ public class DocumentProcessor
     private readonly IMongoDatabase _database;
     private readonly DescriptionToVectorProcessor _descriptionToVectorProcessor;
 
+    private const int BatchSize = 2000;
+    private const string VectorField = "vector";
+    private const string DocumentIdField = "_id";
+    private const string IdField = "id";
+
+    private const string GenderField = "gender";
+    private const string ColorField = "color";
+    private const string ProductNameField = "title";
+    private const string DescriptionField = "description";
+    private const string DescriptionGeneratedField = "description_generated";
+
+
     public DocumentProcessor(string mongoDbConnection, string databaseName, string collectionName,
         DescriptionToVectorProcessor descriptionToVectorProcessor)
     {
@@ -22,18 +34,18 @@ public class DocumentProcessor
 
     public async Task ProcessDocumentsInBatchesAsync()
     {
-        var batchSize = 2000;
         var batchCount = 0;
 
-        var filter = Builders<BsonDocument>.Filter.Eq("vector", BsonNull.Value) |
-                     Builders<BsonDocument>.Filter.Eq("vector", "");
+        var filter = Builders<BsonDocument>.Filter.Eq(VectorField, BsonNull.Value) |
+                     Builders<BsonDocument>.Filter.Eq(VectorField, "");
         var projection = Builders<BsonDocument>.Projection
-            .Include("_id")
-            .Include("data.id")
-            .Include("data.gender")
-            .Include("data.baseColour")
-            .Include("data.productDisplayName")
-            .Include("data.description");
+            .Include(DocumentIdField)
+            .Include(IdField)
+            .Include(GenderField)
+            .Include(ColorField)
+            .Include(ProductNameField)
+            .Include(DescriptionField)
+            .Include(DescriptionGeneratedField);
 
         int promptTokensTotal = 0;
 
@@ -62,7 +74,7 @@ public class DocumentProcessor
         using var cursor = await _collection.FindAsync(filter, new FindOptions<BsonDocument>
         {
             Projection = projection,
-            BatchSize = batchSize
+            BatchSize = BatchSize
         });
 
         await cursor.MoveNextAsync();
@@ -86,16 +98,17 @@ public class DocumentProcessor
 
         List<Document> documents = batch.Select(doc =>
         {
-            Document document = new Document { DocumentId = doc["_id"].AsObjectId };
+            Document document = new Document { DocumentId = doc[DocumentIdField].AsObjectId };
 
             StringBuilder sb = new StringBuilder();
-            sb.Append(doc["data"]["gender"].AsString);
+            sb.Append(doc[GenderField].AsString);
             sb.Append(" ");
-            sb.Append(doc["data"]["baseColour"].AsString);
+            sb.Append(doc[ColorField].AsString);
             sb.Append(" ");
-            sb.Append(doc["data"]["productDisplayName"].AsString);
+            sb.Append(doc[ProductNameField].AsString);
             sb.Append(" ");
-            sb.AppendLine(doc["data"]["description"].AsString);
+            sb.AppendLine(doc[DescriptionField].AsString);
+            sb.AppendLine(doc[DescriptionGeneratedField].AsString);
 
             document.ExtendedDescription = sb.ToString();
 
@@ -109,8 +122,8 @@ public class DocumentProcessor
             promptTokensTotal = imageProcessingResult.PromptTokensRunningTotal;
 
             await _collection.UpdateOneAsync(
-                Builders<BsonDocument>.Filter.Eq("_id", imageProcessingResult.Document.DocumentId),
-                Builders<BsonDocument>.Update.Set("vector", imageProcessingResult.Vectors));
+                Builders<BsonDocument>.Filter.Eq(DocumentIdField, imageProcessingResult.Document.DocumentId),
+                Builders<BsonDocument>.Update.Set(VectorField, imageProcessingResult.Vectors));
         }
 
         return promptTokensTotal;
