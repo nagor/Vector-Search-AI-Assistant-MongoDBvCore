@@ -25,12 +25,12 @@ public class ChatService
     private const string ChatCompletionMarker = "[CHAT_COMPLETION]";
     private const string ProductMarker = "[PRODUCT]";
 
-    public const string SystemPromptTemplate = @"Below is a story of a person who is trying to purchase some clothing.
+    public const string SystemPromptTemplate = @"Below is my story. I am trying to purchase some apparel.
 ---
 STORY
 [USER_PROMPT]
 ---
-Tell me who this person is and their needs. Suggests characteristics of the clothing this person might be interested in.";
+Tell me who I might be and what are my needs. Suggests characteristics of the apparel I might be interested in.";
 
     private const string ProductReasoningTemplate = @"Below is my story. I am trying to purchase apparel:
 ---
