@@ -10,6 +10,13 @@ public class DocumentProcessor
     private readonly IMongoDatabase _database;
     private readonly ImageToDescriptionProcessor _imageToDescriptionProcessor;
 
+
+    private const int BatchSize = 2000;
+    private const string DescriptionGeneratedField = "description_generated";
+    private const string DocumentIdField = "_id";
+    private const string IdField = "id";
+    private const string ImageUrlField = "image_link";
+
     public DocumentProcessor(string mongoDbConnection, string databaseName, string collectionName,
         string gpt4VisionEndpoint, string gpt4VisionKey)
     {
@@ -21,15 +28,14 @@ public class DocumentProcessor
 
     public async Task ProcessDocumentsInBatchesAsync()
     {
-        var batchSize = 2000;
         var batchCount = 0;
 
-        var filter = Builders<BsonDocument>.Filter.Eq("data.description", BsonNull.Value) |
-                     Builders<BsonDocument>.Filter.Eq("data.description", "");
+        var filter = Builders<BsonDocument>.Filter.Eq(DescriptionGeneratedField, BsonNull.Value) |
+                     Builders<BsonDocument>.Filter.Eq(DescriptionGeneratedField, "");
         var projection = Builders<BsonDocument>.Projection
-            .Include("_id")
-            .Include("data.id")
-            .Include("data.styleImages.default.imageURL");
+            .Include(DocumentIdField)
+            .Include(IdField)
+            .Include(ImageUrlField);
 
         int promptTokensTotal = 0;
         int completionTokensTotal = 0;
@@ -59,7 +65,7 @@ public class DocumentProcessor
         using var cursor = await _collection.FindAsync(filter, new FindOptions<BsonDocument>
         {
             Projection = projection,
-            BatchSize = batchSize
+            BatchSize = BatchSize
         });
 
         await cursor.MoveNextAsync();
@@ -83,9 +89,9 @@ public class DocumentProcessor
 
         List<Image> images = batch.Select(doc => new Image
             {
-                DocumentId = doc["_id"].AsObjectId,
-                Id = doc["data"]["id"].AsInt32,
-                Url = doc["data"]["styleImages"]["default"]["imageURL"].AsString
+                DocumentId = doc[DocumentIdField].AsObjectId,
+                Id = doc[IdField].AsString,
+                Url = doc[ImageUrlField].AsString
             }
         ).ToList();
 
@@ -99,8 +105,8 @@ public class DocumentProcessor
             completionTokensTotal = imageProcessingResult.CompletionTokensRunningTotal;
 
             await _collection.UpdateOneAsync(
-                Builders<BsonDocument>.Filter.Eq("_id", imageProcessingResult.Image.DocumentId),
-                Builders<BsonDocument>.Update.Set("data.description", imageProcessingResult.Description));
+                Builders<BsonDocument>.Filter.Eq(DocumentIdField, imageProcessingResult.Image.DocumentId),
+                Builders<BsonDocument>.Update.Set(DescriptionGeneratedField, imageProcessingResult.Description));
         }
 
         return (promptTokensTotal, completionTokensTotal);

@@ -217,7 +217,7 @@ public class Root
 public record Image
 {
     public string Url { get; set; }
-    public int Id { get; set; }
+    public string Id { get; set; }
 
     public ObjectId DocumentId { get; set; }
 

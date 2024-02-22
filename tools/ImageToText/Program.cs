@@ -20,7 +20,7 @@ ArgumentNullException.ThrowIfNull(gpt4VisionKey);
 DocumentProcessor documentProcessor = new DocumentProcessor(
     mongoDbConnection,
     "retaildb",
-    "clothes",
+    "jc",
     gpt4VisionEndpoint, gpt4VisionKey);
 await documentProcessor.ProcessDocumentsInBatchesAsync();
 
