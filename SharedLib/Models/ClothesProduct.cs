@@ -11,13 +11,13 @@ public class ClothesProduct
     [BsonId] public ObjectId Id { get; set; }
 
     [BsonElement("id")]
-    public long ProductId { get; set; }
+    public string ProductId { get; set; }
 
-    [BsonElement("productDisplayName")]
+    [BsonElement("title")]
     public string ProductName { get; set; }
 
-    [BsonElement("brandName")]
-    public string ProductBrand { get; set; }
+    // [BsonElement("brandName")]
+    // public string ProductBrand { get; set; }
 
     [BsonElement("gender")]
     public string Gender { get; set; }
@@ -28,11 +28,17 @@ public class ClothesProduct
     [BsonElement("description")]
     public string Description { get; set; }
 
-    [BsonElement("baseColour")]
+    [BsonElement("description_generated")]
+    public string DescriptionGenerated { get; set; }
+
+    [BsonElement("color")]
     public string PrimaryColor { get; set; }
 
-    [BsonElement("imageUrl")]
+    [BsonElement("image_link")]
     public string ImageUrl { get; set; }
+
+    [BsonElement("link")]
+    public string ProductUrl { get; set; }
 
 }
 
@@ -57,7 +63,7 @@ public static class ClothesProductExtensions
 
     public static string ToFormattedString(this ClothesProduct product)
     {
-        return $"{product.ProductId} {product.Price:C} {product.ProductName}\n{product.ProductBrand} {product.Gender} {product.PrimaryColor}\n{product.Description}";
+        return $"{product.ProductId} {product.Price:C} {product.ProductName}\n{product.Gender} {product.PrimaryColor}\n{product.Description}\n{product.DescriptionGenerated}";
     }
 
     public static List<ClothesProduct> GetProducts(string bsonData)

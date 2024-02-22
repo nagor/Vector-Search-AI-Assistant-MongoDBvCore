@@ -242,10 +242,10 @@ Why you may like it?
                 {
                     string productStr = $"{product.ProductId}  {product.Price:C}  {product.ProductName}";
 
-                    long productId = product.ProductId;
+                    string productId = product.ProductId;
 
                     // Generate the link dynamically using Razor syntax
-                    return $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail5\"> {productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning({productId}, '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a>";
+                    return $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail5\"> {productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning('{productId}', '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a> <a href=\"{product.ProductUrl}\" target=\"_blank\">Check out the product!</a>\n";
                 });
 
             StringBuilder stringBuilder = new StringBuilder();
@@ -273,7 +273,7 @@ Why you may like it?
         }
     }
 
-    public async Task GetProductReasoningAsync(string? sessionId, long productId, Guid userPromptMessageId, Guid chatCompletionMessageId)
+    public async Task GetProductReasoningAsync(string? sessionId, string productId, Guid userPromptMessageId, Guid chatCompletionMessageId)
     {
         try
         {

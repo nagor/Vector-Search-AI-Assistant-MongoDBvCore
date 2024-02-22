@@ -221,15 +221,24 @@ public class MongoDbService
                         {
                             // either include only needed, or exclude something not needed, not both
                             { "_id", 1 },
+                            {"id", 1},
+                            {"title", 1},
+                            {"gender", 1},
+                            {"price", 1},
+                            {"description", 1},
+                            {"description_generated", 1},
+                            {"color", 1},
+                            {"image_link", 1},
+                            {"link", 1}
                             // map fields
-                            {"id", "$data.id"},
-                            {"imageUrl", "$data.styleImages.default.imageURL"},
-                            {"productDisplayName", "$data.productDisplayName"},
-                            {"brandName", "$data.brandName"},
-                            {"gender", "$data.gender"},
-                            {"price", "$data.price"},
-                            {"description", "$data.description"},
-                            {"baseColour", "$data.baseColour"}
+                            // {"id", "$data.id"},
+                            // {"imageUrl", "$data.styleImages.default.imageURL"},
+                            // {"productDisplayName", "$data.productDisplayName"},
+                            // {"brandName", "$data.brandName"},
+                            // {"gender", "$data.gender"},
+                            // {"price", "$data.price"},
+                            // {"description", "$data.description"},
+                            // {"baseColour", "$data.baseColour"}
                             // exclude
                             // { "notification", 0 },
                             // { "meta", 0 },
@@ -395,35 +404,26 @@ public class MongoDbService
 
     }
 
-    public async Task<ClothesProduct?> GetClothesProductAsync(long productId)
+    public async Task<ClothesProduct?> GetClothesProductAsync(string productId)
     {
 
         try
         {
             var pipeline = new BsonDocument[]
             {
-                new BsonDocument("$match", new BsonDocument("data.id", productId)),
+                new BsonDocument("$match", new BsonDocument("id", productId)),
                 new BsonDocument("$project", new BsonDocument
                 {
-                    // either include only needed, or exclude something not needed, not both
                     { "_id", 1 },
-                    // map fields
-                    {"id", "$data.id"},
-                    {"imageUrl", "$data.styleImages.default.imageURL"},
-                    {"productDisplayName", "$data.productDisplayName"},
-                    {"brandName", "$data.brandName"},
-                    {"gender", "$data.gender"},
-                    {"price", "$data.price"},
-                    {"description", "$data.description"},
-                    {"baseColour", "$data.baseColour"}
-                    // exclude
-                    // { "notification", 0 },
-                    // { "meta", 0 },
-                    // { "vector", 0 },
-                    // {"data.articleAttributes", 0},
-                    // {"data.crossLinks", 0},
-                    // {"data.brandUserProfile", 0},
-                    // {"data.vector", 0},
+                    {"id", 1},
+                    {"title", 1},
+                    {"gender", 1},
+                    {"price", 1},
+                    {"description", 1},
+                    {"description_generated", 1},
+                    {"color", 1},
+                    {"image_link", 1},
+                    {"link", 1}
                 })
             };
 

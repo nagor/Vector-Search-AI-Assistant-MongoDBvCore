@@ -261,7 +261,7 @@
         if(_messagesInChat?.Count == 2)
         {
             string newSessionName;
-            newSessionName = await chatService.SummarizeChatSessionNameAsync(CurrentSession?.SessionId, String.Join(Environment.NewLine, _messagesInChat.Select(m => m.Text)));
+            newSessionName = await chatService.SummarizeChatSessionNameAsync(CurrentSession?.SessionId, String.Join(Environment.NewLine, _messagesInChat.First().Text));
 
             if (CurrentSession is not null)
             {
@@ -279,7 +279,7 @@
     }
 
     [JSInvokable]
-    public async Task GiveProductReasoningAsync(long productId, Guid userPromptMessageId, Guid chatCompletionMessageId)
+    public async Task GiveProductReasoningAsync(string productId, Guid userPromptMessageId, Guid chatCompletionMessageId)
     {
         if (CurrentSession?.SessionId == Interface.EMPTY_SESSION)
         {
