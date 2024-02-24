@@ -39,17 +39,13 @@ Tell me who I might be and what my needs are. Suggests characteristics of the ap
 [USER_PROMPT]
 ---
 Return JSON object based on the customer story with the following keys: 
-# gender: if there are several people in the customer story, you MUST set Undefined; values MUST be from the following list: Boys, Girls, Womens, Mens, Unisex, Undefined.
+# gender: values MUST be from the following list: Boys, Girls, Womens, Mens, Unisex, Undefined.
 # minPrice: numeric value of the minimum price desired by the customer.
 # maxPrice: numeric value of the maximum price desired by the customer.
 
 Be precise. Do not show reasoning. You MUST return JSON object.
 ### INPUT ###
 I am looking for jeans for me and shirt for my husband
-### OUTPUT ###
-{""gender"":""Undefined""}
-### INPUT ###
-I am going to play soccer with my friends
 ### OUTPUT ###
 {""gender"":""Undefined""}
 ### INPUT ###
@@ -60,10 +56,6 @@ I am going to play soccer with my friends. I am a man.
 I am looking for clothes for my daughter's tennis game on the weekend. I prefer to spend not more than 200 bucks.
 ### OUTPUT ###
 {""gender"":""Girls"", ""minPrice"": 0, ""maxPrice"": 200}
-### INPUT ###
-I am looking for something special for my date night with my wifey.
-### OUTPUT ###
-{""gender"":""Mens""}
 ### INPUT ###
 I am looking for something special for my date night with hubby. I want something from $400
 ### OUTPUT ###

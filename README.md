@@ -258,7 +258,7 @@ This solution can be run locally post deployment. Below are the prerequisites an
     "OpenAI__CompletionsDeployment": "",
     "OpenAi__EmbeddingsDeployment": "",
     "OpenAi__MaxConversationTokens": "5000",
-    "OpenAi__MaxCompletionTokens": "4000",
+    "OpenAi__MaxCompletionTokens": "2000",
     "OpenAi__MaxEmbeddingTokens": "8000",
     "MongoDb__Connection": "",
     "MongoDb__DatabaseName": "retaildb",

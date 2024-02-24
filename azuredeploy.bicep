@@ -55,7 +55,7 @@ var openAiSettings = {
   name: '${name}-openai'
   sku: openAiSku
   maxConversationTokens: '5000'
-  maxCompletionTokens: '500'
+  maxCompletionTokens: '2000'
   completionsModel: {
     name: 'gpt-35-turbo'
     version: '0301'
