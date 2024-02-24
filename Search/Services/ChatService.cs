@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Newtonsoft.Json;
 using Search.Constants;
 using SharedLib.Models;
 using SharedLib.Services;
@@ -25,12 +26,44 @@ public class ChatService
     private const string ChatCompletionMarker = "[CHAT_COMPLETION]";
     private const string ProductMarker = "[PRODUCT]";
 
-    public const string SystemPromptTemplate = @"Below is my story. I am trying to purchase some apparel.
+    public const string UserPromptTemplate = @"Below is my story. I am trying to purchase some apparel.
 ---
 STORY
 [USER_PROMPT]
 ---
-Tell me who I might be and what are my needs. Suggests characteristics of the apparel I might be interested in.";
+Tell me who I might be and what my needs are. Suggests characteristics of the apparel I might be interested in.";
+
+    public const string UserAttributesPromptTemplate = @"Below is customer story. They are trying to purchase some apparel.
+---
+### STORY ###
+[USER_PROMPT]
+---
+Return JSON object based on the customer story with the following keys. 
+- gender; values must be from the following list: Boys, Girls, Womens, Mens, Unisex, Undefined. If you cannot determine the gender, use Undefined.
+- minPrice; numeric value of the minimum price desired by the user. If you cannot determine the minimum desired price, use 0.
+- maxPrice; numeric value of the maximum price desired by the user. If you cannot determine the maximum desired price, use 0.
+
+Be precise. Do not show reasoning. You MUST return JSON object.
+### INPUT ###
+I am going to play soccer with my friends
+### OUTPUT ###
+{""gender"":""Undefined""}
+### INPUT ###
+I am going to play soccer with my friends. I am a man.
+### OUTPUT ###
+{""gender"":""Mens""}
+### INPUT ###
+I am looking for clothes for my daughter's tennis game on the weekend. I prefer to spend not more than 200 bucks.
+### OUTPUT ###
+{""gender"":""Girls"", ""minPrice"": 0, ""maxPrice"": 200}
+### INPUT ###
+I am looking for something special for my date night with my wifey.
+### OUTPUT ###
+{""gender"":""Mens""}
+### INPUT ###
+I am looking for something special for my date night with hubby. I want something from $400
+### OUTPUT ###
+{""gender"":""Womens"", ""minPrice"": 400, ""maxPrice"":0}";
 
     private const string ProductReasoningTemplate = @"Below is my story. I am trying to purchase apparel:
 ---
@@ -203,41 +236,53 @@ Why you may like it?
         {
             ArgumentNullException.ThrowIfNull(sessionId);
 
-            string prompt = string.IsNullOrWhiteSpace(systemPrompt) ? SystemPromptTemplate : systemPrompt;
-
-            // 1. Extend user prompt with predefined template with PARAGRAPH
-            prompt = prompt.Replace(UserPromptMarker, userPrompt);
 
             // Get the most recent conversation history up to _maxConversationTokens
             //string conversation = GetConversationHistory(sessionId);
 
+            // 1. Get product description by chat
+
+            string productSearchPrompt = string.IsNullOrWhiteSpace(systemPrompt) ? UserPromptTemplate : systemPrompt;
+            // Extend user prompt with predefined template with PARAGRAPH
+            productSearchPrompt = productSearchPrompt.Replace(UserPromptMarker, userPrompt);
+
             // Construct our prompts: here we can use previous conversation ans maybe some data context.
             // We omit conversation and data for now.
             // Trim payload to prevent exceeding token limits.
-            (string augmentedContent, string conversationAndUserPrompt) = BuildPrompts(prompt, conversation: "", retrievedData: "");
+            (string augmentedContent, string conversationAndUserPrompt) = BuildPrompts(productSearchPrompt, conversation: "", retrievedData: "");
 
+            // Generate the completion from Azure OpenAI to have product extended description by chat
+            (string completionText, int promptTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPrompt, documents: augmentedContent);
 
-            // Generate the completion from Azure OpenAI to have product tags
-            (string completionText, int ragTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPrompt, documents: augmentedContent);
+            // 2. Get customer attributes from story
 
-            string embeddingsPattern = completionText;
+            string userAttributesPrompt = UserAttributesPromptTemplate;
+            userAttributesPrompt = userAttributesPrompt.Replace(UserPromptMarker, userPrompt);
+
+            (string augmentedContentUserAttributes, string conversationAndUserPromptUserAttributes) = BuildPrompts(userAttributesPrompt, conversation: "", retrievedData: "");
+
+            // Generate the completion from Azure OpenAI to have product extended description by chat
+            (string userAttributesJson, int promptTokensUserAttributes, int completionTokensUserAttributes) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPromptUserAttributes, documents: augmentedContentUserAttributes);
+
+            promptTokens += promptTokensUserAttributes;
+            completionTokens += completionTokensUserAttributes;
+
+            UserAttributes? userAttributes = GetUserAttributes(userAttributesJson);
+
+            string productEmbeddingsPattern = userPrompt + "\n" + completionText;
 
             // Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
             Message userPromptMessage = new Message(sessionId, sender: nameof(Participants.User), tokens: completionTokens, promptTokens: default, text: userPrompt);
 
             // Get embeddings for chat completion
-            (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, embeddingsPattern);
+            (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, productEmbeddingsPattern);
 
             // Create the completion message object to have it's id
-            Message chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens: ragTokens, text: String.Empty);
+            Message chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens, text: String.Empty);
 
-            //Do vector search on tags found by user prompt
-            string retrievedDocuments = await _mongoDbService.VectorSearchAsync(collectionName, promptVectors);
+            List<ClothesProduct> products = await GetProducts(collectionName, promptVectors, userAttributes);
 
-            // Deserialize BsonDocuments to a list of C# objects (ClothesProduct model)
-            List<ClothesProduct> clothesProducts = ClothesProductExtensions.GetProducts(retrievedDocuments);
-
-            string formattedProducts = clothesProducts.ToFormattedString(
+            string formattedProducts = products.ToFormattedString(
                 product =>
                 {
                     string productStr = $"{product.ProductId}  {product.Price:C}  {product.ProductName}";
@@ -256,6 +301,11 @@ Why you may like it?
             stringBuilder.AppendLine(new string('-', 20));
             stringBuilder.AppendLine();
             stringBuilder.AppendLine(completionText);
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine(new string('-', 20));
+            stringBuilder.AppendLine();
+            stringBuilder.Append("User attributes: ");
+            stringBuilder.AppendLine(userAttributes?.ToString());
 
             string completionTextWithProducts = stringBuilder.ToString();
 
@@ -270,6 +320,49 @@ Why you may like it?
         {
             _logger.LogError("{ChatCompletionProductSearchAsyncName}: {ExMessage}", nameof(GetChatCompletionProductSearchAsync), ex.Message);
             throw;
+        }
+    }
+
+    private async Task<List<ClothesProduct>> GetProducts(string collectionName, float[] promptVectors, UserAttributes? userAttributes)
+    {
+        //Do vector search on tags found by user prompt
+        string retrievedDocuments = await _mongoDbService.VectorSearchAsync(collectionName, promptVectors);
+
+        // Deserialize BsonDocuments to a list of C# objects (ClothesProduct model)
+        List<ClothesProduct> clothesProducts = ClothesProductExtensions.GetProducts(retrievedDocuments);
+        List<ClothesProduct> filteredProducts = clothesProducts.Take(10).ToList();
+
+        // Filter found products by user attributes
+        if (userAttributes != null)
+        {
+            filteredProducts = clothesProducts
+                .Where(cp => userAttributes.Gender == null || cp.Gender == userAttributes.Gender)
+                .Where(cp => userAttributes.MinPrice == null || userAttributes.MinPrice == 0 || Equals(userAttributes.MinPrice, userAttributes.MaxPrice) || cp.Price >= userAttributes.MinPrice)
+                .Where(cp => userAttributes.MaxPrice == null || userAttributes.MaxPrice == 0 || Equals(userAttributes.MaxPrice, userAttributes.MinPrice) || cp.Price <= userAttributes.MaxPrice)
+                .Take(10)
+                .ToList();
+
+            if (filteredProducts.Count == 0)
+            {
+                filteredProducts = clothesProducts.Take(10).ToList();
+            }
+        }
+
+        return filteredProducts;
+    }
+
+    private UserAttributes? GetUserAttributes(string userAttributesJson)
+    {
+        try
+        {
+            var userAttributes = JsonConvert.DeserializeObject<UserAttributes>(userAttributesJson);
+            userAttributes?.Sanitize();
+            return userAttributes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Cannot get {UserAttributes} from: {UserAttributeJson}, ex: {Exception}", nameof(UserAttributes), userAttributesJson, ex.Message);
+            return null;
         }
     }
 
@@ -494,5 +587,43 @@ Why you may like it?
 
         await _mongoDbService.UpsertSessionBatchAsync(session: _sessions[index], chatCompletionMessage);
 
+    }
+}
+
+public class UserAttributes
+{
+    private static readonly List<string> Genders = new()
+    {
+        "Mens", "Womens", "Boys", "Girls", "Unisex", "Undefined"
+    };
+
+    [JsonProperty("gender")]
+    public string? Gender { get; set; }
+    [JsonProperty("minPrice")]
+    public double? MinPrice { get; set; }
+    [JsonProperty("maxPrice")]
+    public double? MaxPrice { get; set; }
+
+    public override string ToString()
+    {
+        return $"Gender: {Gender ?? ""} MinPrice: {(MinPrice == null ? "--" : MinPrice):C} MaxPrice: {(MaxPrice == null ? "--" : MaxPrice):C}";
+    }
+
+    public void Sanitize()
+    {
+        if (!string.IsNullOrWhiteSpace(Gender) && !Genders.Contains(Gender))
+        {
+            Gender = "Undefined";
+        }
+
+        if (MinPrice is < 0)
+        {
+            MinPrice = null;
+        }
+
+        if (MaxPrice is < 0)
+        {
+            MaxPrice = null;
+        }
     }
 }

@@ -34,8 +34,8 @@ public class OpenAiService
 //
 //         Text of relevant information:";
     private readonly string _systemPromptRetailAssistant = @"
-        You are an intelligent assistant for a store selling men's and women's apparel.
-        Based on customer's story you will generate a list of attributes of apparel they need.
+        You are an AI agent for a store selling men's and women's apparel and accessories.
+        As the agent, you answer questions briefly, succinctly, and in a personable manner using markdown and even add some personal flair with appropriate emojis. 
 
         Instructions:
             - If you're unsure of an answer, please ask the user to clarify their story.
@@ -207,9 +207,7 @@ public class OpenAiService
         }
         catch ( Exception ex )
         {
-
-            string message = $"OpenAiService.GetChatCompletionAsync(): {ex.Message}";
-            _logger.LogError(message);
+            _logger.LogError("{ChatCompletionAsyncName}: {ExMessage}", nameof(GetChatCompletionAsync), ex.Message);
             throw;
 
         }
