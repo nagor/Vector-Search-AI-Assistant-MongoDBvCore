@@ -32,7 +32,18 @@
         </div>
     }
     <h6 class="px-4 display-6 text-secondary p-2">@GetChatSessionName()</h6>
-    <textarea cols="100" rows="5" class="mb-2" id="PromptTemplate" @bind="SystemPrompt"></textarea>
+    <div class="container mb-2">
+        <div class="row">
+            <div class="col-md-6">
+                Product details prompt:
+                <textarea id="textarea1" class="form-control" cols="40" rows="5" @bind="UserPromptTemplate"></textarea>
+            </div>
+            <div class="col-md-6">
+                Customer attributes prompt:
+                <textarea id="textarea2" class="form-control" cols="40" rows="5" @bind="UserAttributesPromptTemplate"></textarea>
+            </div>
+        </div>
+    </div>
     <div class="px-4 pb-4 pt-2 flex-grow-1 overflow-y-auto overflow-x-hidden align-items-stretch" id="MessagesInChatdiv">
         @if (CurrentSession is null)
         {
@@ -173,7 +184,8 @@
 
     private string? UserPrompt { get; set; }
 
-    private string SystemPrompt { get; set; } = ChatService.UserPromptTemplate;
+    private string UserPromptTemplate { get; set; } = ChatService.UserPromptTemplate;
+    private string UserAttributesPromptTemplate { get; set; } = ChatService.UserAttributesPromptTemplate;
 
     private string? UserPromptSet { get; set; }
 
@@ -256,7 +268,7 @@
             CollectionName = ChatService.DefaultCollection;
         }
 
-        await chatService.GetChatCompletionProductSearchAsync(CurrentSession?.SessionId, UserPrompt, CollectionName, SystemPrompt);
+        await chatService.GetChatCompletionProductSearchAsync(CurrentSession?.SessionId, UserPrompt, CollectionName, UserPromptTemplate, UserAttributesPromptTemplate);
 
         if(_messagesInChat?.Count == 2)
         {

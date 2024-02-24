@@ -33,19 +33,19 @@ public class ChatService
 ---
 Tell me who I might be and what my needs are. Suggests characteristics of the apparel I might be interested in.";
 
-    public const string UserAttributesPromptTemplate = @"Below is customer story. They are trying to purchase some apparel for themself or some other people.
+    public const string UserAttributesPromptTemplate = @"Below is my story. I am trying to purchase some apparel.
 ---
 ### STORY ###
 [USER_PROMPT]
 ---
-Return JSON object based on the customer story with the following keys: 
-# gender: values MUST be from the following list: Boys, Girls, Womens, Mens, Unisex, Undefined.
-# minPrice: numeric value of the minimum price desired by the customer.
-# maxPrice: numeric value of the maximum price desired by the customer.
-
+Return JSON object based on the user story with the following keys. 
+- gender; values must be from the following list: Boys, Girls, Womens, Mens, Unisex, Undefined. If you cannot determine the gender, use Undefined.
+- minPrice; numeric value of the minimum price desired by the user. If you cannot determine the minimum desired price, use 0.
+- maxPrice; numeric value of the maximum price desired by the user. If you cannot determine the maximum desired price, use 0.
+ 
 Be precise. Do not show reasoning. You MUST return JSON object.
 ### INPUT ###
-I am looking for jeans for me and shirt for my husband
+I am going to play soccer with my friends
 ### OUTPUT ###
 {""gender"":""Undefined""}
 ### INPUT ###
@@ -57,7 +57,10 @@ I am looking for clothes for my daughter's tennis game on the weekend. I prefer 
 ### OUTPUT ###
 {""gender"":""Girls"", ""minPrice"": 0, ""maxPrice"": 200}
 ### INPUT ###
-I am looking for something special for my date night with hubby. I want something from $400
+I am looking for something special for my date night.
+### OUTPUT ###
+{""gender"":""Womens""}
+I am looking for something special for my date night. I want something special from $400
 ### OUTPUT ###
 {""gender"":""Womens"", ""minPrice"": 400, ""maxPrice"":0}";
 
@@ -226,7 +229,7 @@ Why you may like it?
         }
     }
 
-    public async Task GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string systemPrompt)
+    public async Task GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string userAttributesPromptTemplate)
     {
         try
         {
@@ -238,7 +241,7 @@ Why you may like it?
 
             // 1. Get product description by chat
 
-            string productSearchPrompt = string.IsNullOrWhiteSpace(systemPrompt) ? UserPromptTemplate : systemPrompt;
+            string productSearchPrompt = string.IsNullOrWhiteSpace(userPromptTemplate) ? UserPromptTemplate : userPromptTemplate;
             // Extend user prompt with predefined template with PARAGRAPH
             productSearchPrompt = productSearchPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
 
@@ -251,8 +254,7 @@ Why you may like it?
             (string completionText, int promptTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPrompt, documents: augmentedContent);
 
             // 2. Get customer attributes from story
-
-            string userAttributesPrompt = UserAttributesPromptTemplate;
+            string userAttributesPrompt = string.IsNullOrWhiteSpace(userAttributesPromptTemplate) ? UserAttributesPromptTemplate : userAttributesPromptTemplate;
             userAttributesPrompt = userAttributesPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
 
             (string augmentedContentUserAttributes, string conversationAndUserPromptUserAttributes) = BuildPrompts(userAttributesPrompt, conversation: "", retrievedData: "");
