@@ -238,7 +238,7 @@ Why you may like it?
 
 
             // Get the most recent conversation history up to _maxConversationTokens
-            //string conversation = GetConversationHistory(sessionId);
+            string conversation = GetConversationHistory(sessionId, nameof(Participants.User));
 
             // 1. Get product description by chat
 
@@ -496,7 +496,7 @@ Why you may like it?
     /// <summary>
     /// Get the most recent conversation history to provide additional context for the completion LLM
     /// </summary>
-    private string GetConversationHistory(string sessionId)
+    private string GetConversationHistory(string sessionId, string? sender = null)
     {
 
         int? tokensUsed = 0;
@@ -507,6 +507,7 @@ Why you may like it?
 
         //Iterate through these in reverse order to get the most recent conversation history up to _maxConversationTokens
         var trimmedMessages = conversationMessages
+            .Where(m=> string.IsNullOrWhiteSpace(sender) || m.Sender == sender)
             .OrderByDescending(m => m.TimeStamp)
             .TakeWhile(m => (tokensUsed += m.Tokens) <= _maxConversationTokens)
             .Select(m => m.Text)

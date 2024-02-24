@@ -87,7 +87,7 @@
     "openAiSettings": {
       "name": "[format('{0}-openai', parameters('name'))]",
       "sku": "[parameters('openAiSku')]",
-      "maxConversationTokens": "100",
+      "maxConversationTokens": "5000",
       "maxCompletionTokens": "500",
       "maxEmbeddingTokens": "8000",
       "completionsModel": {

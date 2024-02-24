@@ -32,7 +32,7 @@ OpenAiService openAiService = new OpenAiService(
     embeddingsDeployment: "embeddings",
     completionsDeployment: "completions",
     maxCompletionTokens: "2000",
-    maxConversationTokens: "1000",
+    maxConversationTokens: "5000",
     maxEmbeddingTokens: "8000",
     logger
     );

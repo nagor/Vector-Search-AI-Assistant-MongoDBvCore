@@ -6,7 +6,7 @@
     "OpenAi__Key": "",
     "OpenAI__CompletionsDeployment": "",
     "OpenAi__EmbeddingsDeployment": "",
-    "OpenAi__MaxConversationTokens": "1000",
+    "OpenAi__MaxConversationTokens": "5000",
     "OpenAi__MaxCompletionTokens": "4000",
     "OpenAi__MaxEmbeddingTokens": "8000",
     "MongoDb__Connection": "",

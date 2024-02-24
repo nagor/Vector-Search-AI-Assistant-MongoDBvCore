@@ -54,7 +54,7 @@ param appGetRepositoryBranch string = 'main'
 var openAiSettings = {
   name: '${name}-openai'
   sku: openAiSku
-  maxConversationTokens: '100'
+  maxConversationTokens: '5000'
   maxCompletionTokens: '500'
   completionsModel: {
     name: 'gpt-35-turbo'

@@ -227,7 +227,7 @@ This solution can be run locally post deployment. Below are the prerequisites an
     "Key": "",
     "EmbeddingsDeployment": "",
     "CompletionsDeployment": "",
-    "MaxConversationTokens": "1000",
+    "MaxConversationTokens": "5000",
     "MaxCompletionTokens": "2000",
     "MaxEmbeddingTokens": "8000"
   },
@@ -257,7 +257,7 @@ This solution can be run locally post deployment. Below are the prerequisites an
     "OpenAi__Key": "",
     "OpenAI__CompletionsDeployment": "",
     "OpenAi__EmbeddingsDeployment": "",
-    "OpenAi__MaxConversationTokens": "1000",
+    "OpenAi__MaxConversationTokens": "5000",
     "OpenAi__MaxCompletionTokens": "4000",
     "OpenAi__MaxEmbeddingTokens": "8000",
     "MongoDb__Connection": "",
