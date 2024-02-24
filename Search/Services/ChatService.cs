@@ -378,27 +378,25 @@ Why you may like it?
 
             ClothesProduct? product = await _mongoDbService.GetClothesProductAsync(productId);
             ArgumentNullException.ThrowIfNull(product);
-            Message? userPromptMessage = await _mongoDbService.GetMessagesAsync(userPromptMessageId);
-            ArgumentNullException.ThrowIfNull(userPromptMessage);
 
+            // Get the most recent conversation history up to _maxConversationTokens
+            string userMessages = GetConversationHistory(sessionId, nameof(Participants.User));
             string productCard = $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail15\"><br/>" + product.ToFormattedString();
-            string userMessage = userPromptMessage.Text;
 
             string prompt = ProductReasoningTemplate
-                .Replace(UserPromptMarker, userMessage)
+                .Replace(UserPromptMarker, userMessages)
                 .Replace(ProductMarker, productCard);
 
-            // TODO: trim prompt if needed
-            // (string augmentedContent, string conversationAndUserPrompt) =
-            //     BuildPrompts(prompt, conversation: "", retrievedData: "");
+            (string augmentedContent, string conversationAndUserPrompt) =
+                BuildPrompts(prompt, conversation: "", retrievedData: "");
 
 
             // Generate the completion from Azure OpenAI to have product tags
             (string completionText, int ragTokens, int completionTokens) =
                 await _openAiService.GetChatCompletionAsync(
                     sessionId,
-                    prompt, // conversationAndUserPrompt,
-                    documents: "" // augmentedContent
+                    conversationAndUserPrompt,
+                    documents: augmentedContent
                     );
 
             string message = WhyLikeProductTemplate
@@ -406,7 +404,7 @@ Why you may like it?
                 .Replace(ChatCompletionMarker, completionText);
 
             // Create the completion message object to have it's id
-            Message? chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens,
+            Message chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens,
                 promptTokens: ragTokens, text: message);
 
             //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
