@@ -28,22 +28,26 @@ public class ChatService
 
     public const string UserPromptTemplate = @"Below is my story. I am trying to purchase some apparel.
 ---
-STORY
+### STORY ###
 [USER_PROMPT]
 ---
 Tell me who I might be and what my needs are. Suggests characteristics of the apparel I might be interested in.";
 
-    public const string UserAttributesPromptTemplate = @"Below is customer story. They are trying to purchase some apparel.
+    public const string UserAttributesPromptTemplate = @"Below is customer story. They are trying to purchase some apparel for themself or some other people.
 ---
 ### STORY ###
 [USER_PROMPT]
 ---
-Return JSON object based on the customer story with the following keys. 
-- gender; values must be from the following list: Boys, Girls, Womens, Mens, Unisex, Undefined. If you cannot determine the gender, use Undefined.
-- minPrice; numeric value of the minimum price desired by the user. If you cannot determine the minimum desired price, use 0.
-- maxPrice; numeric value of the maximum price desired by the user. If you cannot determine the maximum desired price, use 0.
+Return JSON object based on the customer story with the following keys: 
+# gender: if there are several people in the customer story, you MUST set Undefined; values MUST be from the following list: Boys, Girls, Womens, Mens, Unisex, Undefined.
+# minPrice: numeric value of the minimum price desired by the customer.
+# maxPrice: numeric value of the maximum price desired by the customer.
 
 Be precise. Do not show reasoning. You MUST return JSON object.
+### INPUT ###
+I am looking for jeans for me and shirt for my husband
+### OUTPUT ###
+{""gender"":""Undefined""}
 ### INPUT ###
 I am going to play soccer with my friends
 ### OUTPUT ###
@@ -238,13 +242,13 @@ Why you may like it?
 
 
             // Get the most recent conversation history up to _maxConversationTokens
-            string conversation = GetConversationHistory(sessionId, nameof(Participants.User));
+            string userMessages = GetConversationHistory(sessionId, nameof(Participants.User));
 
             // 1. Get product description by chat
 
             string productSearchPrompt = string.IsNullOrWhiteSpace(systemPrompt) ? UserPromptTemplate : systemPrompt;
             // Extend user prompt with predefined template with PARAGRAPH
-            productSearchPrompt = productSearchPrompt.Replace(UserPromptMarker, userPrompt);
+            productSearchPrompt = productSearchPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
 
             // Construct our prompts: here we can use previous conversation ans maybe some data context.
             // We omit conversation and data for now.
@@ -257,7 +261,7 @@ Why you may like it?
             // 2. Get customer attributes from story
 
             string userAttributesPrompt = UserAttributesPromptTemplate;
-            userAttributesPrompt = userAttributesPrompt.Replace(UserPromptMarker, userPrompt);
+            userAttributesPrompt = userAttributesPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
 
             (string augmentedContentUserAttributes, string conversationAndUserPromptUserAttributes) = BuildPrompts(userAttributesPrompt, conversation: "", retrievedData: "");
 
