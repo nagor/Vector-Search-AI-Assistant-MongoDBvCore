@@ -5,7 +5,7 @@ using SharedLib.Services;
 namespace ChatAPI.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class ChatController : ControllerBase
 {
     private readonly ILogger<ChatController> _logger;
@@ -17,10 +17,19 @@ public class ChatController : ControllerBase
         _chatService = chatService;
     }
 
-    [HttpGet(Name = "GetSession")]
+    [HttpGet]
+    [Route("sessions")]
     public async Task<List<string>> Get()
     {
         List<Session> sessions = await _chatService.GetAllChatSessionsAsync();
         return sessions.Select(s => s.Id).ToList();
+    }
+
+    [HttpGet]
+    [Route("messages/{sessionId}")]
+    public async Task<List<Message>> Get(string sessionId)
+    {
+        List<Message> messages = await _chatService.GetChatSessionMessagesAsync(sessionId);
+        return messages;
     }
 }
