@@ -1,4 +1,4 @@
-namespace Search.Constants;
+namespace SharedLib.Constants;
 
 public enum Participants
 {

@@ -1,6 +1,7 @@
-﻿using SharedLib.Services;
+﻿using Microsoft.Extensions.Logging;
+using SharedLib.Services;
 
-namespace Search.Options;
+namespace SharedLib.Options;
 
 public record Chat
 {

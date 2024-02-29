@@ -1,9 +1,6 @@
 using Microsoft.Extensions.Options;
-using MongoDB.Driver;
 using SharedLib.Options;
 using SharedLib.Services;
-using Search.Options;
-using Search.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,7 +44,7 @@ static class ProgramExtensions
 
     public static void RegisterServices(this IServiceCollection services)
     {
-        
+
         services.AddSingleton<OpenAiService, OpenAiService>((provider) =>
         {
             var openAiOptions = provider.GetRequiredService<IOptions<OpenAi>>();
@@ -64,7 +61,7 @@ static class ProgramExtensions
                     completionsDeployment: openAiOptions.Value?.CompletionsDeployment ?? String.Empty,
                     maxConversationTokens: openAiOptions.Value?.MaxConversationTokens ?? String.Empty,
                     maxCompletionTokens: openAiOptions.Value?.MaxCompletionTokens ?? String.Empty,
-                    maxEmbeddingTokens: openAiOptions.Value?.MaxEmbeddingTokens ?? String.Empty,                                        
+                    maxEmbeddingTokens: openAiOptions.Value?.MaxEmbeddingTokens ?? String.Empty,
                     logger: provider.GetRequiredService<ILogger<OpenAiService>>()
                 );
             }

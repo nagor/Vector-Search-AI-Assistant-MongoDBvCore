@@ -1,11 +1,11 @@
 ﻿using System.Text;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Search.Constants;
+using SharedLib.Constants;
 using SharedLib.Models;
-using SharedLib.Services;
 using SharpToken;
 
-namespace Search.Services;
+namespace SharedLib.Services;
 
 public class ChatService
 {
