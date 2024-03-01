@@ -104,6 +104,7 @@ Why you may like it?
         return _sessions = await _mongoDbService.GetSessionsAsync();
     }
 
+
     /// <summary>
     /// Returns the chat messages to display on the main web page when the user selects a chat from the left-hand nav
     /// </summary>
@@ -140,7 +141,7 @@ Why you may like it?
     /// <summary>
     /// User creates a new Chat Session.
     /// </summary>
-    public async Task CreateNewChatSessionAsync()
+    public async Task<string> CreateNewChatSessionAsync()
     {
         Session session = new();
 
@@ -148,6 +149,7 @@ Why you may like it?
 
         await _mongoDbService.InsertSessionAsync(session);
 
+        return session.SessionId;
     }
 
     /// <summary>
@@ -229,12 +231,13 @@ Why you may like it?
         }
     }
 
-    public async Task GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string userAttributesPromptTemplate)
+    public async Task<List<Message>> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string userAttributesPromptTemplate)
     {
         try
         {
-            ArgumentNullException.ThrowIfNull(sessionId);
+            // TODO: init sessions from sessionId
 
+            ArgumentNullException.ThrowIfNull(sessionId);
 
             // Get the most recent conversation history up to _maxConversationTokens
             string userMessages = GetConversationHistory(sessionId, nameof(Participants.User));
@@ -313,54 +316,16 @@ Why you may like it?
             //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
             await AddPromptCompletionMessagesAsync(sessionId, userPromptMessage, chatCompletionMessage);
 
+            return new List<Message>
+            {
+                userPromptMessage,
+                chatCompletionMessage
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError("{ChatCompletionProductSearchAsyncName}: {ExMessage}", nameof(GetChatCompletionProductSearchAsync), ex.Message);
             throw;
-        }
-    }
-
-    private async Task<List<ClothesProduct>> GetProducts(string collectionName, float[] promptVectors, UserAttributes? userAttributes)
-    {
-        //Do vector search on tags found by user prompt
-        string retrievedDocuments = await _mongoDbService.VectorSearchAsync(collectionName, promptVectors);
-
-        // Deserialize BsonDocuments to a list of C# objects (ClothesProduct model)
-        List<ClothesProduct> clothesProducts = ClothesProductExtensions.GetProducts(retrievedDocuments);
-        List<ClothesProduct> filteredProducts = clothesProducts.Take(10).ToList();
-
-        // Filter found products by user attributes
-        if (userAttributes != null)
-        {
-            filteredProducts = clothesProducts
-                .Where(cp => userAttributes.Gender == null || cp.Gender == userAttributes.Gender)
-                .Where(cp => userAttributes.MinPrice == null || userAttributes.MinPrice == 0 || Equals(userAttributes.MinPrice, userAttributes.MaxPrice) || cp.Price >= userAttributes.MinPrice)
-                .Where(cp => userAttributes.MaxPrice == null || userAttributes.MaxPrice == 0 || Equals(userAttributes.MaxPrice, userAttributes.MinPrice) || cp.Price <= userAttributes.MaxPrice)
-                .Take(10)
-                .ToList();
-
-            if (filteredProducts.Count == 0)
-            {
-                filteredProducts = clothesProducts.Take(10).ToList();
-            }
-        }
-
-        return filteredProducts;
-    }
-
-    private UserAttributes? GetUserAttributes(string userAttributesJson)
-    {
-        try
-        {
-            var userAttributes = JsonConvert.DeserializeObject<UserAttributes>(userAttributesJson);
-            userAttributes?.Sanitize();
-            return userAttributes;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Cannot get {UserAttributes} from: {UserAttributeJson}, ex: {Exception}", nameof(UserAttributes), userAttributesJson, ex.Message);
-            return null;
         }
     }
 
@@ -408,6 +373,49 @@ Why you may like it?
         {
             _logger.LogError("{GetProductReasoningAsyncName}: {ExMessage}", nameof(GetProductReasoningAsync), ex.Message);
             throw;
+        }
+    }
+
+    private async Task<List<ClothesProduct>> GetProducts(string collectionName, float[] promptVectors, UserAttributes? userAttributes)
+    {
+        //Do vector search on tags found by user prompt
+        string retrievedDocuments = await _mongoDbService.VectorSearchAsync(collectionName, promptVectors);
+
+        // Deserialize BsonDocuments to a list of C# objects (ClothesProduct model)
+        List<ClothesProduct> clothesProducts = ClothesProductExtensions.GetProducts(retrievedDocuments);
+        List<ClothesProduct> filteredProducts = clothesProducts.Take(10).ToList();
+
+        // Filter found products by user attributes
+        if (userAttributes != null)
+        {
+            filteredProducts = clothesProducts
+                .Where(cp => userAttributes.Gender == null || cp.Gender == userAttributes.Gender)
+                .Where(cp => userAttributes.MinPrice == null || userAttributes.MinPrice == 0 || Equals(userAttributes.MinPrice, userAttributes.MaxPrice) || cp.Price >= userAttributes.MinPrice)
+                .Where(cp => userAttributes.MaxPrice == null || userAttributes.MaxPrice == 0 || Equals(userAttributes.MaxPrice, userAttributes.MinPrice) || cp.Price <= userAttributes.MaxPrice)
+                .Take(10)
+                .ToList();
+
+            if (filteredProducts.Count == 0)
+            {
+                filteredProducts = clothesProducts.Take(10).ToList();
+            }
+        }
+
+        return filteredProducts;
+    }
+
+    private UserAttributes? GetUserAttributes(string userAttributesJson)
+    {
+        try
+        {
+            var userAttributes = JsonConvert.DeserializeObject<UserAttributes>(userAttributesJson);
+            userAttributes?.Sanitize();
+            return userAttributes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Cannot get {UserAttributes} from: {UserAttributeJson}, ex: {Exception}", nameof(UserAttributes), userAttributesJson, ex.Message);
+            return null;
         }
     }
 
@@ -494,7 +502,6 @@ Why you may like it?
     /// </summary>
     private string GetConversationHistory(string sessionId, string? sender = null)
     {
-
         int? tokensUsed = 0;
 
         int index = _sessions.FindIndex(s => s.SessionId == sessionId);
@@ -568,6 +575,7 @@ Why you may like it?
         await _mongoDbService.UpsertSessionBatchAsync(session: _sessions[index], userPromptMessage, chatCompletionMessage);
 
     }
+
     private async Task AddPromptCompletionMessagesAsync(string sessionId, Message chatCompletionMessage)
     {
 
@@ -584,43 +592,5 @@ Why you may like it?
 
         await _mongoDbService.UpsertSessionBatchAsync(session: _sessions[index], chatCompletionMessage);
 
-    }
-}
-
-public class UserAttributes
-{
-    private static readonly List<string> Genders = new()
-    {
-        "Mens", "Womens", "Boys", "Girls", "Unisex", "Undefined"
-    };
-
-    [JsonProperty("gender")]
-    public string? Gender { get; set; }
-    [JsonProperty("minPrice")]
-    public double? MinPrice { get; set; }
-    [JsonProperty("maxPrice")]
-    public double? MaxPrice { get; set; }
-
-    public override string ToString()
-    {
-        return $"Gender: {Gender ?? ""} MinPrice: {(MinPrice == null ? "--" : MinPrice):C} MaxPrice: {(MaxPrice == null ? "--" : MaxPrice):C}";
-    }
-
-    public void Sanitize()
-    {
-        if (!string.IsNullOrWhiteSpace(Gender) && !Genders.Contains(Gender))
-        {
-            Gender = "Undefined";
-        }
-
-        if (MinPrice is < 0)
-        {
-            MinPrice = null;
-        }
-
-        if (MaxPrice is < 0)
-        {
-            MaxPrice = null;
-        }
     }
 }

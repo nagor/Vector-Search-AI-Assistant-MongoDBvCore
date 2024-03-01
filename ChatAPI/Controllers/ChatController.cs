@@ -1,3 +1,4 @@
+using ChatAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using SharedLib.Models;
 using SharedLib.Services;
@@ -17,19 +18,42 @@ public class ChatController : ControllerBase
         _chatService = chatService;
     }
 
-    [HttpGet]
+    [HttpPost]
     [Route("sessions")]
-    public async Task<List<string>> Get()
+    public async Task<string> CreateSession()
     {
-        List<Session> sessions = await _chatService.GetAllChatSessionsAsync();
-        return sessions.Select(s => s.Id).ToList();
+        string sessionId = await _chatService.CreateNewChatSessionAsync();
+        return sessionId;
     }
 
     [HttpGet]
     [Route("messages/{sessionId}")]
-    public async Task<List<Message>> Get(string sessionId)
+    public async Task<IActionResult> GetSessionMessages(string sessionId)
     {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            return BadRequest();
+        }
+
         List<Message> messages = await _chatService.GetChatSessionMessagesAsync(sessionId);
-        return messages;
+        return Ok(messages);
+    }
+
+    [HttpPost]
+    [Route("messages/{sessionId}")]
+    public async Task<IActionResult> PostMessage(string sessionId, [FromBody] MessagePost? message)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            return BadRequest("SessionId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(message?.UserPrompt))
+        {
+            return BadRequest("UserPrompt is required.");
+        }
+
+        List<Message> messages = await _chatService.GetChatCompletionProductSearchAsync(sessionId, message.UserPrompt, "clothes", null, null);
+        return Ok(messages);
     }
 }
