@@ -270,6 +270,7 @@ Why you may like it?
             promptTokens += promptTokensUserAttributes;
             completionTokens += completionTokensUserAttributes;
 
+            // TODO: move found UserAttributes to Message.Metadata.UserAttributes
             UserAttributes? userAttributes = GetUserAttributes(userAttributesJson);
 
             string productEmbeddingsPattern = userPrompt + "\n" + completionText;
@@ -285,6 +286,7 @@ Why you may like it?
 
             List<ClothesProduct> products = await GetProducts(collectionName, promptVectors, userAttributes);
 
+            // TODO: move found Products to Message.Metadata.Products, do not format here
             string formattedProducts = products.ToFormattedString(
                 product =>
                 {
