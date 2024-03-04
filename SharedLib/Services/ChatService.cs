@@ -12,7 +12,7 @@ public class ChatService
     /// <summary>
     /// All data is cached in the _sessions List object.
     /// </summary>
-    private static List<Session> _sessions = new();
+    private List<Session> _sessions = new();
 
     private readonly OpenAiService _openAiService;
     private readonly MongoDbService _mongoDbService;
@@ -111,6 +111,8 @@ Why you may like it?
     public async Task<List<Message>> GetChatSessionMessagesAsync(string? sessionId)
     {
         ArgumentNullException.ThrowIfNull(sessionId);
+
+        await CacheSession(sessionId);
 
         List<Message> chatMessages = new();
 
@@ -235,9 +237,9 @@ Why you may like it?
     {
         try
         {
-            // TODO: init sessions from sessionId
-
             ArgumentNullException.ThrowIfNull(sessionId);
+
+            await CacheSession(sessionId);
 
             // Get the most recent conversation history up to _maxConversationTokens
             string userMessages = GetConversationHistory(sessionId, nameof(Participants.User));
@@ -326,6 +328,25 @@ Why you may like it?
         {
             _logger.LogError("{ChatCompletionProductSearchAsyncName}: {ExMessage}", nameof(GetChatCompletionProductSearchAsync), ex.Message);
             throw;
+        }
+    }
+
+    private async Task CacheSession(string sessionId)
+    {
+        if (!_sessions.Exists(session => session.SessionId == sessionId)) // session is not cached, go read from database
+        {
+            Session? session = await _mongoDbService.GetSessionAsync(sessionId);
+            if(session != null)
+            {
+                List<Message> messages = await _mongoDbService.GetSessionMessagesAsync(sessionId);
+                session.Messages = messages;
+                _sessions.Add(session);
+            }
+            else
+            {
+                _logger.LogWarning("Session with id {SessionId} not found in the database", sessionId);
+                throw new Exception($"Session {sessionId} not found");
+            }
         }
     }
 

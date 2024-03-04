@@ -580,22 +580,37 @@ public class MongoDbService
     /// <returns>List of distinct chat session items.</returns>
     public async Task<List<Session>> GetSessionsAsync()
     {
-        List<Session> sessions = new List<Session>();
         try
         {
 
-            sessions = await _sessions.Find(
+            List<Session> sessions = await _sessions.Find(
                 filter: Builders<Session>.Filter.Eq("Type", nameof(Session)))
                 .ToListAsync();
+            return sessions;
 
         }
         catch (MongoException ex)
         {
-            _logger.LogError($"Exception: GetSessionsAsync(): {ex.Message}");
+            _logger.LogError("Exception: {GetSessionsName}: {ExMessage}", nameof(GetSessionsAsync), ex.Message);
             throw;
         }
+    }
 
-        return sessions;
+    public async Task<Session?> GetSessionAsync(string sessionId)
+    {
+        try
+        {
+            return await _sessions.Find(
+                filter: Builders<Session>.Filter.Eq("Type", nameof(Session))
+                & Builders<Session>.Filter.Eq("SessionId", sessionId))
+                .FirstOrDefaultAsync();
+
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError("Exception: {GetSessionName}: {ExMessage}", nameof(GetSessionAsync), ex.Message);
+            throw;
+        }
     }
 
     /// <summary>

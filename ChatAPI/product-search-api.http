@@ -8,21 +8,21 @@ Content-Type: application/x-www-form-urlencoded
 ### Get messages of session
 
 # curl -X 'GET'
-#  'https://localhost:7197/api/Chat/messages/838e3dcc-32c7-4c73-bdcc-27b9e1bba161'
+#  'https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458'
 #  -H 'accept: */*'
-GET https://localhost:7197/api/Chat/messages/838e3dcc-32c7-4c73-bdcc-27b9e1bba161
+GET https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
 accept: */*
 
 ### Post message to session
 
 # curl -X 'POST'
-#  'https://localhost:7197/api/Chat/messages/838e3dcc-32c7-4c73-bdcc-27b9e1bba161'
+#  'https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458'
 #  -H 'accept: */*'
 #  -H 'Content-Type: application/json'
 #  -d '{
 #  "userPrompt": "I am looking something light for birthday party of my boyfriend"
 #}'
-POST https://localhost:7197/api/Chat/messages/838e3dcc-32c7-4c73-bdcc-27b9e1bba161
+POST https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
 accept: */*
 Content-Type: application/json
 
@@ -31,3 +31,21 @@ Content-Type: application/json
 }
 
 ###
+
+POST https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+accept: */*
+Content-Type: application/json
+
+{
+  "userPrompt": "I prefer plaid and brown color"
+}
+
+###
+
+POST https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+accept: */*
+Content-Type: application/json
+
+{
+  "userPrompt": "I am a woman"
+}
