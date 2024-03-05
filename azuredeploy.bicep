@@ -45,10 +45,10 @@ param mongoDbUserName string
 param mongoDbPassword string
 
 
-@description('Git repository URL for the application source. This defaults to the [`Azure/Vector-Search-Ai-Assistant`](https://github.com/Azure/Vector-Search-AI-Assistant-MongoDBvCore.git) repository.')
-param appGitRepository string = 'https://github.com/Azure/Vector-Search-AI-Assistant-MongoDBvCore.git'
+@description('Git repository URL for the application source. This defaults to the [`nagor/Vector-Search-Ai-Assistant`](https://github.com/nagor/Vector-Search-AI-Assistant-MongoDBvCore.git) repository.')
+param appGitRepository string = 'https://github.com/nagor/Vector-Search-AI-Assistant-MongoDBvCore.git'
 
-@description('Git repository branch for the application source. This defaults to the [**main** branch of the `Azure/Vector-Search-Ai-Assistant-MongoDBvCore`](https://github.com/Azure/Vector-Search-AI-Assistant-MongoDBvCore/tree/main) repository.')
+@description('Git repository branch for the application source. This defaults to the [**main** branch of the `nagor/Vector-Search-Ai-Assistant-MongoDBvCore`](https://github.com/nagor/Vector-Search-AI-Assistant-MongoDBvCore/tree/main) repository.')
 param appGetRepositoryBranch string = 'main'
 
 var openAiSettings = {
@@ -56,9 +56,10 @@ var openAiSettings = {
   sku: openAiSku
   maxConversationTokens: '5000'
   maxCompletionTokens: '2000'
+  maxEmbeddingTokens: '8000'
   completionsModel: {
     name: 'gpt-35-turbo'
-    version: '0301'
+    version: '0613'
     deployment: {
       name: 'completions'
     }
@@ -248,10 +249,12 @@ resource appServiceWebSettings 'Microsoft.Web/sites/config@2022-03-01' = {
     OPENAI__COMPLETIONSDEPLOYMENT: openAiCompletionsModelDeployment.name
     OPENAI__MAXCONVERSATIONTOKENS: openAiSettings.maxConversationTokens
     OPENAI__MAXCOMPLETIONTOKENS: openAiSettings.maxCompletionTokens
+    OPENAI__MAXEMBEDDINGTOKENS: openAiSettings.maxEmbeddingTokens
     MONGODB__CONNECTION: 'mongodb+srv://${mongovCoreSettings.mongoClusterLogin}:${mongovCoreSettings.mongoClusterPassword}@${mongovCoreSettings.mongoClusterName}.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000'
     MONGODB__DATABASENAME: 'retaildb'
-    MONGODB__COLLECTIONNAMES: 'product,customer,vectors,completions'
+    MONGODB__COLLECTIONNAMES: 'product,customer,vectors,completions,clothes'
     MONGODB__MAXVECTORSEARCHRESULTS: '20'
+    MONGODB__VECTORINDEXTYPE: 'ivf'
   }
 }
 
@@ -270,10 +273,12 @@ resource appServiceFunctionSettings 'Microsoft.Web/sites/config@2022-03-01' = {
     OPENAI__COMPLETIONSDEPLOYMENT: openAiCompletionsModelDeployment.name
     OPENAI__MAXCONVERSATIONTOKENS: openAiSettings.maxConversationTokens
     OPENAI__MAXCOMPLETIONTOKENS: openAiSettings.maxCompletionTokens
-    OPENAI__MAXTOKENS: '8191'
+    OPENAI__MAXEMBEDDINGTOKENS: openAiSettings.maxEmbeddingTokens
     MONGODB__CONNECTION: 'mongodb+srv://${mongovCoreSettings.mongoClusterLogin}:${mongovCoreSettings.mongoClusterPassword}@${mongovCoreSettings.mongoClusterName}.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000'
     MONGODB__DATABASENAME: 'retaildb'
-    MONGODB__COLLECTIONNAMES: 'product,customer,vectors,completions'
+    MONGODB__COLLECTIONNAMES: 'product,customer,vectors,completions,clothes'
+    MONGODB__MAXVECTORSEARCHRESULTS: '20'
+    MONGODB__VECTORINDEXTYPE: 'ivf'
   }
 }
 
