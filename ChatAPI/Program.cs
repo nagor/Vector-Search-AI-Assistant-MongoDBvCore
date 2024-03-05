@@ -1,3 +1,4 @@
+using ChatAPI.Middlewares;
 using Microsoft.Extensions.Options;
 using SharedLib.Options;
 using SharedLib.Services;
@@ -24,6 +25,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseApiKeyMiddleware();
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
@@ -44,6 +47,9 @@ static class ProgramExtensions
 
         builder.Services.AddOptions<MongoDb>()
             .Bind(builder.Configuration.GetSection(nameof(MongoDb)));
+
+        builder.Services.AddOptions<ChatApi>()
+            .Bind(builder.Configuration.GetSection(nameof(ChatApi)));
     }
 
     public static void RegisterServices(this IServiceCollection services)

@@ -2,6 +2,7 @@
 
 ### Create session
 POST https://localhost:7197/api/Chat/sessions
+ApiKey: {{api-key}}
 accept: text/plain
 Content-Type: application/x-www-form-urlencoded
 
@@ -11,6 +12,7 @@ Content-Type: application/x-www-form-urlencoded
 #  'https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458'
 #  -H 'accept: */*'
 GET https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+ApiKey: {{api-key}}
 accept: */*
 
 ### Post message to session
@@ -23,6 +25,7 @@ accept: */*
 #  "userPrompt": "I am looking something light for birthday party of my boyfriend"
 #}'
 POST https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+ApiKey: {{api-key}}
 accept: */*
 Content-Type: application/json
 
@@ -33,6 +36,7 @@ Content-Type: application/json
 ###
 
 POST https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+ApiKey: {{api-key}}
 accept: */*
 Content-Type: application/json
 
@@ -43,6 +47,7 @@ Content-Type: application/json
 ###
 
 POST https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+ApiKey: {{api-key}}
 accept: */*
 Content-Type: application/json
 
