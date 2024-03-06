@@ -6,7 +6,7 @@ using SharedLib.Services;
 namespace ChatAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class ChatController : ControllerBase
 {
     private readonly ILogger<ChatController> _logger;

@@ -3,8 +3,6 @@
 ### Create session
 POST {{api-url}}/api/Chat/sessions
 ApiKey: {{api-key}}
-accept: text/plain
-Content-Type: application/x-www-form-urlencoded
 
 ### Get messages of session
 
@@ -13,7 +11,6 @@ Content-Type: application/x-www-form-urlencoded
 #  -H 'accept: */*'
 GET {{api-url}}/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
 ApiKey: {{api-key}}
-accept: */*
 
 ### Post message to session
 
