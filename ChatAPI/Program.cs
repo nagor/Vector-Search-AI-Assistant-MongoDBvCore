@@ -39,9 +39,6 @@ static class ProgramExtensions
 {
     public static void RegisterConfiguration(this WebApplicationBuilder builder)
     {
-        //builder.Configuration.AddUserSecrets<Program>(optional: true, reloadOnChange: true);
-        builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
-
         builder.Services.AddOptions<OpenAi>()
             .Bind(builder.Configuration.GetSection(nameof(OpenAi)));
 
