@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.26.54.24096",
-      "templateHash": "2423232783521168501"
+      "templateHash": "18293752932674799302"
     }
   },
   "parameters": {
@@ -76,7 +76,7 @@
     },
     "appGetRepositoryBranch": {
       "type": "string",
-      "defaultValue": "newdeployment",
+      "defaultValue": "main",
       "metadata": {
         "description": "Git repository branch for the application source. This defaults to the [**main** branch of the `nagor/Vector-Search-Ai-Assistant-MongoDBvCore`](https://github.com/nagor/Vector-Search-AI-Assistant-MongoDBvCore/tree/main) repository."
       }

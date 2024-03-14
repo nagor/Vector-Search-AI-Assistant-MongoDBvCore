@@ -51,7 +51,7 @@ param mongoDbPassword string
 param appGitRepository string = 'https://github.com/nagor/Vector-Search-AI-Assistant-MongoDBvCore.git'
 
 @description('Git repository branch for the application source. This defaults to the [**main** branch of the `nagor/Vector-Search-Ai-Assistant-MongoDBvCore`](https://github.com/nagor/Vector-Search-AI-Assistant-MongoDBvCore/tree/main) repository.')
-param appGetRepositoryBranch string = 'newdeployment'
+param appGetRepositoryBranch string = 'main'
 
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models#gpt-35-models
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models#embeddings-models
