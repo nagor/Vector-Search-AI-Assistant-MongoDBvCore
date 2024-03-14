@@ -1,0 +1,310 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.26.54.24096",
+      "templateHash": "2423232783521168501"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "allowedValues": [
+        "australiaeast",
+        "westeurope",
+        "japaneast",
+        "uksouth",
+        "eastus",
+        "eastus2",
+        "southcentralus"
+      ],
+      "metadata": {
+        "description": "Location where all resources will be deployed. This value defaults to the **East US** region."
+      }
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 15,
+      "metadata": {
+        "description": "Unique name for the deployed services below. Max length 15 characters, alphanumeric only:\n- Azure Cosmos DB for MongoDB vCore\n- Azure OpenAI Service\n- Azure App Service\n- Azure Functions\n\nThe name defaults to a unique string generated from the resource group identifier.\n"
+      }
+    },
+    "appServiceSku": {
+      "type": "string",
+      "defaultValue": "B1",
+      "allowedValues": [
+        "B1",
+        "S1"
+      ],
+      "metadata": {
+        "description": "Specifies the SKU for the Azure App Service plan. Defaults to **B1**"
+      }
+    },
+    "openAiSku": {
+      "type": "string",
+      "defaultValue": "S0",
+      "allowedValues": [
+        "S0"
+      ],
+      "metadata": {
+        "description": "Specifies the SKU for the Azure OpenAI resource. Defaults to **S0**"
+      }
+    },
+    "mongoDbUserName": {
+      "type": "string",
+      "metadata": {
+        "description": "MongoDB vCore user Name. No dashes."
+      }
+    },
+    "mongoDbPassword": {
+      "type": "securestring",
+      "minLength": 8,
+      "maxLength": 256,
+      "metadata": {
+        "description": "MongoDB vCore password. 8-256 characters, 3 of the following: lower case, upper case, numeric, symbol."
+      }
+    },
+    "appGitRepository": {
+      "type": "string",
+      "defaultValue": "https://github.com/nagor/Vector-Search-AI-Assistant-MongoDBvCore.git",
+      "metadata": {
+        "description": "Git repository URL for the application source. This defaults to the [`nagor/Vector-Search-Ai-Assistant`](https://github.com/nagor/Vector-Search-AI-Assistant-MongoDBvCore.git) repository."
+      }
+    },
+    "appGetRepositoryBranch": {
+      "type": "string",
+      "defaultValue": "newdeployment",
+      "metadata": {
+        "description": "Git repository branch for the application source. This defaults to the [**main** branch of the `nagor/Vector-Search-Ai-Assistant-MongoDBvCore`](https://github.com/nagor/Vector-Search-AI-Assistant-MongoDBvCore/tree/main) repository."
+      }
+    }
+  },
+  "variables": {
+    "openAiSettings": {
+      "name": "[format('{0}-openai', parameters('name'))]",
+      "sku": "[parameters('openAiSku')]",
+      "maxConversationTokens": "5000",
+      "maxCompletionTokens": "2000",
+      "maxEmbeddingTokens": "8000",
+      "completionsModel": {
+        "name": "gpt-35-turbo",
+        "version": "0125",
+        "deployment": {
+          "name": "completions"
+        }
+      },
+      "embeddingsModel": {
+        "name": "text-embedding-3-small",
+        "deployment": {
+          "name": "embeddings"
+        }
+      }
+    },
+    "mongovCoreSettings": {
+      "mongoClusterName": "[format('{0}-mongo', parameters('name'))]",
+      "mongoClusterLogin": "[parameters('mongoDbUserName')]",
+      "mongoClusterPassword": "[parameters('mongoDbPassword')]"
+    },
+    "appServiceSettings": {
+      "plan": {
+        "name": "[format('{0}-web-plan', parameters('name'))]",
+        "sku": "[parameters('appServiceSku')]"
+      },
+      "web": {
+        "name": "[format('{0}-web', parameters('name'))]",
+        "git": {
+          "repo": "[parameters('appGitRepository')]",
+          "branch": "[parameters('appGetRepositoryBranch')]"
+        }
+      },
+      "api": {
+        "name": "[format('{0}-api', parameters('name'))]"
+      },
+      "function": {
+        "name": "[format('{0}-function', parameters('name'))]",
+        "git": {
+          "repo": "[parameters('appGitRepository')]",
+          "branch": "[parameters('appGetRepositoryBranch')]"
+        }
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.DocumentDB/mongoClusters",
+      "apiVersion": "2023-03-01-preview",
+      "name": "[variables('mongovCoreSettings').mongoClusterName]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "administratorLogin": "[variables('mongovCoreSettings').mongoClusterLogin]",
+        "administratorLoginPassword": "[variables('mongovCoreSettings').mongoClusterPassword]",
+        "serverVersion": "5.0",
+        "nodeGroupSpecs": [
+          {
+            "kind": "Shard",
+            "sku": "M30",
+            "diskSizeGB": 128,
+            "enableHa": false,
+            "nodeCount": 1
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/mongoClusters/firewallRules",
+      "apiVersion": "2023-03-01-preview",
+      "name": "[format('{0}/{1}', variables('mongovCoreSettings').mongoClusterName, 'allowAzure')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/mongoClusters', variables('mongovCoreSettings').mongoClusterName)]"
+      ]
+    },
+    {
+      "type": "Microsoft.DocumentDB/mongoClusters/firewallRules",
+      "apiVersion": "2023-03-01-preview",
+      "name": "[format('{0}/{1}', variables('mongovCoreSettings').mongoClusterName, 'allowAll')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "255.255.255.255"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/mongoClusters', variables('mongovCoreSettings').mongoClusterName)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2022-03-01",
+      "name": "[variables('appServiceSettings').plan.name]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[variables('appServiceSettings').plan.sku]"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2022-03-01",
+      "name": "[variables('appServiceSettings').web.name]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "alwaysOn": true
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2022-03-01",
+      "name": "[variables('appServiceSettings').api.name]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "alwaysOn": true
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2022-03-01",
+      "name": "[format('{0}/{1}', variables('appServiceSettings').web.name, 'appsettings')]",
+      "kind": "string",
+      "properties": {
+        "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', variables('appServiceSettings').web.name), '2020-02-02').InstrumentationKey]",
+        "OPENAI__MAXCONVERSATIONTOKENS": "[variables('openAiSettings').maxConversationTokens]",
+        "OPENAI__MAXCOMPLETIONTOKENS": "[variables('openAiSettings').maxCompletionTokens]",
+        "OPENAI__MAXEMBEDDINGTOKENS": "[variables('openAiSettings').maxEmbeddingTokens]",
+        "MONGODB__CONNECTION": "[format('mongodb+srv://{0}:{1}@{2}.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000', variables('mongovCoreSettings').mongoClusterLogin, variables('mongovCoreSettings').mongoClusterPassword, variables('mongovCoreSettings').mongoClusterName)]",
+        "MONGODB__DATABASENAME": "retaildb",
+        "MONGODB__COLLECTIONNAMES": "product,customer,vectors,completions,clothes",
+        "MONGODB__MAXVECTORSEARCHRESULTS": "20",
+        "MONGODB__VECTORINDEXTYPE": "ivf"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').web.name)]",
+        "[resourceId('Microsoft.Insights/components', variables('appServiceSettings').web.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2022-03-01",
+      "name": "[format('{0}/{1}', variables('appServiceSettings').api.name, 'appsettings')]",
+      "kind": "string",
+      "properties": {
+        "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', variables('appServiceSettings').api.name), '2020-02-02').InstrumentationKey]",
+        "OPENAI__MAXCONVERSATIONTOKENS": "[variables('openAiSettings').maxConversationTokens]",
+        "OPENAI__MAXCOMPLETIONTOKENS": "[variables('openAiSettings').maxCompletionTokens]",
+        "OPENAI__MAXEMBEDDINGTOKENS": "[variables('openAiSettings').maxEmbeddingTokens]",
+        "MONGODB__CONNECTION": "[format('mongodb+srv://{0}:{1}@{2}.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000', variables('mongovCoreSettings').mongoClusterLogin, variables('mongovCoreSettings').mongoClusterPassword, variables('mongovCoreSettings').mongoClusterName)]",
+        "MONGODB__DATABASENAME": "retaildb",
+        "MONGODB__COLLECTIONNAMES": "product,customer,vectors,completions,clothes",
+        "MONGODB__MAXVECTORSEARCHRESULTS": "20",
+        "MONGODB__VECTORINDEXTYPE": "ivf"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').api.name)]",
+        "[resourceId('Microsoft.Insights/components', variables('appServiceSettings').api.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/sourcecontrols",
+      "apiVersion": "2021-03-01",
+      "name": "[format('{0}/{1}', variables('appServiceSettings').web.name, 'web')]",
+      "properties": {
+        "repoUrl": "[variables('appServiceSettings').web.git.repo]",
+        "branch": "[variables('appServiceSettings').web.git.branch]",
+        "isManualIntegration": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').web.name)]",
+        "[resourceId('Microsoft.Web/sites/config', variables('appServiceSettings').web.name, 'appsettings')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appServiceSettings').web.name]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').web.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appServiceSettings').api.name]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').api.name)]"
+      ]
+    }
+  ],
+  "outputs": {
+    "deployedUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', variables('appServiceSettings').web.name), '2022-03-01').defaultHostName]"
+    }
+  }
+}
