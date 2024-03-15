@@ -101,15 +101,7 @@ public class OpenAiService
 
         _logger = logger;
 
-        OpenAIClientOptions options = new OpenAIClientOptions()
-        {
-            Retry =
-            {
-                Delay = TimeSpan.FromSeconds(2),
-                MaxRetries = 10,
-                Mode = RetryMode.Exponential
-            }
-        };
+        OpenAIClientOptions options = new OpenAIClientOptions();
 
         //Use this as endpoint in configuration to use non-Azure Open AI endpoint and OpenAI model names
         if (endpoint.Contains("api.openai.com"))
