@@ -2,6 +2,7 @@
 using Azure.AI.OpenAI;
 using Azure.Core;
 using System.Text.RegularExpressions;
+using Azure.Core.Pipeline;
 using Microsoft.Extensions.Logging;
 
 namespace SharedLib.Services;
@@ -101,7 +102,15 @@ public class OpenAiService
 
         _logger = logger;
 
-        OpenAIClientOptions options = new OpenAIClientOptions();
+        OpenAIClientOptions options = new OpenAIClientOptions()
+        {
+            Retry =
+            {
+                Delay = TimeSpan.FromSeconds(2),
+                MaxRetries = 10,
+                Mode = RetryMode.Exponential
+            }
+        };
 
         //Use this as endpoint in configuration to use non-Azure Open AI endpoint and OpenAI model names
         if (endpoint.Contains("api.openai.com"))
