@@ -2,6 +2,7 @@
 @using SharedLib.Models
 @using Humanizer
 @using SharedLib.Constants
+@using SharedLib.Extensions
 @using SharedLib.Services
 @inject ChatService chatService
 @inject IJSRuntime JSRuntime
@@ -131,8 +132,11 @@
                                 <div class="toast-body">
                                     <i class="bi bi-grip-vertical mr-2 text-black-50"></i>
                                     @{
-                                        // TODO: format message here
-                                        MarkupString html = new MarkupString(msg.Text.Replace("\n", "<br />"));
+                                        string formattedMessage = (msg is { Sender: nameof(Participants.Assistant), Products: not null }
+                                                ? msg.ToFormattedString()
+                                                : msg.Text)
+                                            .Replace("\n", "<br />");
+                                        MarkupString html = new MarkupString(formattedMessage);
                                     }
                                     @html
                                 </div>

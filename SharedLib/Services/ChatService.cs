@@ -1,7 +1,7 @@
-﻿using System.Text;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using SharedLib.Constants;
+using SharedLib.Extensions;
 using SharedLib.Models;
 using SharpToken;
 
@@ -278,37 +278,6 @@ Why you may like it?
                 products,
                 userAttributes,
                 extraQuestions);
-
-
-            // string formattedProducts = products.ToFormattedString(
-            //     product =>
-            //     {
-            //         string productStr = $"{product.ProductId}  {product.Price:C}  {product.ProductName}";
-            //
-            //         string productId = product.ProductId;
-            //
-            //         // Generate the link dynamically using Razor syntax
-            //         return $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail5\"> {productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning('{productId}', '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a> <a href=\"{product.ProductUrl}\" target=\"_blank\">Check out the product!</a>\n";
-            //     });
-            //
-            // StringBuilder stringBuilder = new StringBuilder();
-            //
-            // stringBuilder.AppendLine("Based on your story I can recommend the following products:");
-            // stringBuilder.AppendLine(formattedProducts);
-            // stringBuilder.AppendLine();
-            // stringBuilder.AppendLine(new string('-', 20));
-            // stringBuilder.AppendLine();
-            // stringBuilder.AppendLine(productSearchText);
-            // stringBuilder.AppendLine();
-            // stringBuilder.AppendLine(new string('-', 20));
-            // stringBuilder.AppendLine();
-            // stringBuilder.Append("User attributes: ");
-            // stringBuilder.AppendLine(userAttributes?.ToString());
-            //
-            // string completionTextWithProducts = stringBuilder.ToString();
-            //
-            // // once we have completion text with products, update it in model
-            // chatCompletionMessage.Text = completionTextWithProducts;
 
             //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
             await AddPromptCompletionMessagesAsync(sessionId, userMessage, assistantMessage);
