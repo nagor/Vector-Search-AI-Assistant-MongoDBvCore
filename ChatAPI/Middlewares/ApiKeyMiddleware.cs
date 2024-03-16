@@ -20,6 +20,12 @@ public class ApiKeyMiddleware
 
     public async Task Invoke(HttpContext context)
     {
+        if (!context.Request.Path.StartsWithSegments("/api"))
+        {
+            await _next(context);
+            return;
+        }
+
         string? apiKey = context.Request.Headers["ApiKey"];
 
         if (string.IsNullOrEmpty(apiKey) || !IsValidApiKey(apiKey))
