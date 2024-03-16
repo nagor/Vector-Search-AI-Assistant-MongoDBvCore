@@ -1,5 +1,8 @@
 using ChatAPI.Middlewares;
+using Microsoft.ApplicationInsights;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.Extensions.Options;
+using SharedLib.Exceptions;
 using SharedLib.Options;
 using SharedLib.Services;
 
@@ -13,24 +16,26 @@ builder.Logging.AddConsole();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.RegisterServices();
+builder.Services.AddApplicationInsightsTelemetry();
 
 //builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-// if (app.Environment.IsDevelopment())
-// {
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI();
-//}
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.SetupErrorsTracking();
+}
 
 app.UseApiKeyMiddleware();
-
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();
@@ -52,13 +57,9 @@ static class ProgramExtensions
     public static void RegisterServices(this IServiceCollection services)
     {
 
-        services.AddScoped<OpenAiService, OpenAiService>((provider) =>
+        services.AddScoped<OpenAiService, OpenAiService>(provider =>
         {
             var openAiOptions = provider.GetRequiredService<IOptions<OpenAi>>();
-            if (openAiOptions is null)
-            {
-                throw new ArgumentException($"{nameof(IOptions<OpenAi>)} was not resolved through dependency injection.");
-            }
 
             return new OpenAiService(
                 endpoint: openAiOptions.Value?.Endpoint ?? String.Empty,
@@ -72,13 +73,9 @@ static class ProgramExtensions
             );
         });
 
-        services.AddScoped<MongoDbService, MongoDbService>((provider) =>
+        services.AddScoped<MongoDbService, MongoDbService>(provider =>
         {
             var mongoDbOptions = provider.GetRequiredService<IOptions<MongoDb>>();
-            if (mongoDbOptions is null)
-            {
-                throw new ArgumentException($"{nameof(IOptions<MongoDb>)} was not resolved through dependency injection.");
-            }
 
             return new MongoDbService(
                 connection: mongoDbOptions.Value?.Connection ?? String.Empty,
@@ -90,19 +87,42 @@ static class ProgramExtensions
                 logger: provider.GetRequiredService<ILogger<MongoDbService>>()
             );
         });
-        services.AddScoped<ChatService, ChatService>((provider) =>
+        services.AddScoped<ChatService, ChatService>(provider =>
         {
-            var chatOptions = provider.GetRequiredService<IOptions<Chat>>();
-            if (chatOptions is null)
-            {
-                throw new ArgumentException($"{nameof(IOptions<Chat>)} was not resolved through dependency injection");
-            }
-
             return new ChatService(
                 mongoDbService: provider.GetRequiredService<MongoDbService>(),
                 openAiService: provider.GetRequiredService<OpenAiService>(),
                 logger: provider.GetRequiredService<ILogger<ChatService>>()
             );
+        });
+    }
+
+    public static void SetupErrorsTracking(this WebApplication app)
+    {
+        app.UseExceptionHandler(errorApp =>
+        {
+            errorApp.Run(async context =>
+            {
+                context.Response.StatusCode = 500; // or another Status according to Exception Type
+                context.Response.ContentType = "application/json";
+
+                var error = context.Features.Get<IExceptionHandlerFeature>();
+                if (error != null)
+                {
+                    var ex = error.Error;
+
+                    if (ex is ApiException apiException)
+                    {
+                        context.Response.StatusCode = (int)apiException.StatusCode;
+                    }
+
+                    // Log the error to AppInsights
+                    var telemetryClient = context.RequestServices.GetRequiredService<TelemetryClient>();
+                    telemetryClient.TrackException(ex);
+
+                    await context.Response.WriteAsync(ex.Message).ConfigureAwait(false);
+                }
+            });
         });
     }
 }

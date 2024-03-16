@@ -1,6 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Net;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using SharedLib.Constants;
+using SharedLib.Exceptions;
 using SharedLib.Extensions;
 using SharedLib.Models;
 using SharpToken;
@@ -340,106 +342,6 @@ Why you may like it?
         return (completionText, promptTokens, completionTokens);
     }
 
-    // public async Task<List<Message>> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string userAttributesPromptTemplate)
-    // {
-    //     try
-    //     {
-    //         ArgumentNullException.ThrowIfNull(sessionId);
-    //
-    //         await CacheSession(sessionId);
-    //
-    //         // Get the most recent conversation history up to _maxConversationTokens
-    //         string userMessages = GetConversationHistory(sessionId, nameof(Participants.User));
-    //
-    //         // 1. Get product description by chat
-    //
-    //         string productSearchPrompt = string.IsNullOrWhiteSpace(userPromptTemplate) ? UserPromptTemplate : userPromptTemplate;
-    //         // Extend user prompt with predefined template with PARAGRAPH
-    //         productSearchPrompt = productSearchPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
-    //
-    //         // Construct our prompts: here we can use previous conversation ans maybe some data context.
-    //         // We omit conversation and data for now.
-    //         // Trim payload to prevent exceeding token limits.
-    //         (string augmentedContent, string conversationAndUserPrompt) = BuildPrompts(productSearchPrompt, conversation: "", retrievedData: "");
-    //
-    //         // Generate the completion from Azure OpenAI to have product extended description by chat
-    //         (string completionText, int promptTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPrompt, documents: augmentedContent);
-    //
-    //         // 2. Get customer attributes from story
-    //         string userAttributesPrompt = string.IsNullOrWhiteSpace(userAttributesPromptTemplate) ? UserAttributesPromptTemplate : userAttributesPromptTemplate;
-    //         userAttributesPrompt = userAttributesPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
-    //
-    //         (string augmentedContentUserAttributes, string conversationAndUserPromptUserAttributes) = BuildPrompts(userAttributesPrompt, conversation: "", retrievedData: "");
-    //
-    //         // Generate the completion from Azure OpenAI to have product extended description by chat
-    //         (string userAttributesJson, int promptTokensUserAttributes, int completionTokensUserAttributes) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPromptUserAttributes, documents: augmentedContentUserAttributes);
-    //
-    //         promptTokens += promptTokensUserAttributes;
-    //         completionTokens += completionTokensUserAttributes;
-    //
-    //         // TODO: move found UserAttributes to Message.Metadata.UserAttributes
-    //         UserAttributes? userAttributes = GetUserAttributes(userAttributesJson);
-    //
-    //         string productEmbeddingsPattern = userPrompt + "\n" + completionText;
-    //
-    //         // Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
-    //         Message userPromptMessage = new Message(sessionId, sender: nameof(Participants.User), tokens: completionTokens, promptTokens: default, text: userPrompt);
-    //
-    //         // Get embeddings for chat completion
-    //         (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, productEmbeddingsPattern);
-    //
-    //         // Create the completion message object to have it's id
-    //         Message chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens, text: String.Empty);
-    //
-    //         List<ClothesProduct> products = await GetProducts(collectionName, promptVectors, userAttributes);
-    //
-    //         // TODO: move found Products to Message.Metadata.Products, do not format here
-    //         string formattedProducts = products.ToFormattedString(
-    //             product =>
-    //             {
-    //                 string productStr = $"{product.ProductId}  {product.Price:C}  {product.ProductName}";
-    //
-    //                 string productId = product.ProductId;
-    //
-    //                 // Generate the link dynamically using Razor syntax
-    //                 return $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail5\"> {productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning('{productId}', '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a> <a href=\"{product.ProductUrl}\" target=\"_blank\">Check out the product!</a>\n";
-    //             });
-    //
-    //         StringBuilder stringBuilder = new StringBuilder();
-    //
-    //         stringBuilder.AppendLine("Based on your story I can recommend the following products:");
-    //         stringBuilder.AppendLine(formattedProducts);
-    //         stringBuilder.AppendLine();
-    //         stringBuilder.AppendLine(new string('-', 20));
-    //         stringBuilder.AppendLine();
-    //         stringBuilder.AppendLine(completionText);
-    //         stringBuilder.AppendLine();
-    //         stringBuilder.AppendLine(new string('-', 20));
-    //         stringBuilder.AppendLine();
-    //         stringBuilder.Append("User attributes: ");
-    //         stringBuilder.AppendLine(userAttributes?.ToString());
-    //
-    //         string completionTextWithProducts = stringBuilder.ToString();
-    //
-    //         // once we have completion text with products, update it in model
-    //         chatCompletionMessage.Text = completionTextWithProducts;
-    //
-    //         //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
-    //         await AddPromptCompletionMessagesAsync(sessionId, userPromptMessage, chatCompletionMessage);
-    //
-    //         return new List<Message>
-    //         {
-    //             userPromptMessage,
-    //             chatCompletionMessage
-    //         };
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         _logger.LogError("{ChatCompletionProductSearchAsyncName}: {ExMessage}", nameof(GetChatCompletionProductSearchAsync), ex.Message);
-    //         throw;
-    //     }
-    // }
-
     private async Task CheckIfSessionCached(string sessionId)
     {
         if (!_sessions.Exists(session => session.SessionId == sessionId)) // session is not cached, go read from database
@@ -454,7 +356,7 @@ Why you may like it?
             else
             {
                 _logger.LogWarning("Session with id {SessionId} not found in the database", sessionId);
-                throw new Exception($"Session {sessionId} not found");
+                throw new ApiException($"Session {sessionId} not found", HttpStatusCode.NotFound);
             }
         }
     }

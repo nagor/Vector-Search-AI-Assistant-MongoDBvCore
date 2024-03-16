@@ -42,13 +42,9 @@ static class ProgramExtensions
     public static void RegisterServices(this IServiceCollection services)
     {
 
-        services.AddSingleton<OpenAiService, OpenAiService>((provider) =>
+        services.AddSingleton<OpenAiService, OpenAiService>(provider =>
         {
             var openAiOptions = provider.GetRequiredService<IOptions<OpenAi>>();
-            if (openAiOptions is null)
-            {
-                throw new ArgumentException($"{nameof(IOptions<OpenAi>)} was not resolved through dependency injection.");
-            }
 
             return new OpenAiService(
                 endpoint: openAiOptions.Value?.Endpoint ?? String.Empty,
@@ -62,13 +58,9 @@ static class ProgramExtensions
             );
         });
 
-        services.AddSingleton<MongoDbService, MongoDbService>((provider) =>
+        services.AddSingleton<MongoDbService, MongoDbService>(provider =>
         {
             var mongoDbOptions = provider.GetRequiredService<IOptions<MongoDb>>();
-            if (mongoDbOptions is null)
-            {
-                throw new ArgumentException($"{nameof(IOptions<MongoDb>)} was not resolved through dependency injection.");
-            }
 
             return new MongoDbService(
                 connection: mongoDbOptions.Value?.Connection ?? String.Empty,
@@ -80,14 +72,8 @@ static class ProgramExtensions
                 logger: provider.GetRequiredService<ILogger<MongoDbService>>()
             );
         });
-        services.AddSingleton<ChatService, ChatService>((provider) =>
+        services.AddSingleton<ChatService, ChatService>(provider =>
         {
-            var chatOptions = provider.GetRequiredService<IOptions<Chat>>();
-            if (chatOptions is null)
-            {
-                throw new ArgumentException($"{nameof(IOptions<Chat>)} was not resolved through dependency injection");
-            }
-
             return new ChatService(
                 mongoDbService: provider.GetRequiredService<MongoDbService>(),
                 openAiService: provider.GetRequiredService<OpenAiService>(),
