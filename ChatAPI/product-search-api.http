@@ -9,7 +9,7 @@ ApiKey: {{api-key}}
 # curl -X 'GET'
 #  'https://localhost:7197/api/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458'
 #  -H 'accept: */*'
-GET {{api-url}}/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+GET {{api-url}}/Chat/messages/{{sessionId}}
 ApiKey: {{api-key}}
 
 ### Post message to session
@@ -21,7 +21,7 @@ ApiKey: {{api-key}}
 #  -d '{
 #  "userPrompt": "I am looking something light for birthday party of my boyfriend"
 #}'
-POST {{api-url}}/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+POST {{api-url}}/Chat/messages/{{sessionId}}
 ApiKey: {{api-key}}
 accept: */*
 Content-Type: application/json
@@ -32,7 +32,7 @@ Content-Type: application/json
 
 ###
 
-POST {{api-url}}/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+POST {{api-url}}/Chat/messages/{{sessionId}}
 ApiKey: {{api-key}}
 accept: */*
 Content-Type: application/json
@@ -43,7 +43,7 @@ Content-Type: application/json
 
 ###
 
-POST {{api-url}}/Chat/messages/0a5a9997-8ccb-4469-b064-427cbb202458
+POST {{api-url}}/Chat/messages/{{sessionId}}
 ApiKey: {{api-key}}
 accept: */*
 Content-Type: application/json

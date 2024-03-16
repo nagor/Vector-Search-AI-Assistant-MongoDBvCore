@@ -6,8 +6,6 @@ namespace SharedLib.Models;
 [BsonIgnoreExtraElements]
 public class ClothesProduct
 {
-    [BsonId] public ObjectId Id { get; set; }
-
     [BsonElement("id")]
     public string ProductId { get; set; }
 
