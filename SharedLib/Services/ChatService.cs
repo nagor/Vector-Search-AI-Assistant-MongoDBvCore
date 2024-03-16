@@ -459,7 +459,7 @@ Why you may like it?
         }
     }
 
-    public async Task GetProductReasoningAsync(string? sessionId, string productId, Guid userPromptMessageId, Guid chatCompletionMessageId)
+    public async Task GetProductReasoningAsync(string? sessionId, string productId)
     {
         try
         {

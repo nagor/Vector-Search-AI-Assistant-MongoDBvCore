@@ -296,14 +296,14 @@
     }
 
     [JSInvokable]
-    public async Task GiveProductReasoningAsync(string productId, Guid userPromptMessageId, Guid chatCompletionMessageId)
+    public async Task GiveProductReasoningAsync(string productId, string userPromptMessageId, string chatCompletionMessageId)
     {
         if (CurrentSession?.SessionId == Interface.EMPTY_SESSION)
         {
             return;
         }
 
-        await chatService.GetProductReasoningAsync(CurrentSession?.SessionId, productId, userPromptMessageId, chatCompletionMessageId);
+        await chatService.GetProductReasoningAsync(CurrentSession?.SessionId, productId);
 
         await OnChatUpdated.InvokeAsync();
 
