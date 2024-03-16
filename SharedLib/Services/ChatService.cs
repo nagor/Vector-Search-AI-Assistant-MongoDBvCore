@@ -236,7 +236,7 @@ Why you may like it?
 
 
 
-    public async Task<List<Message>> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string userAttributesPromptTemplate)
+    public async Task<List<Message>> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string customerAttributesPromptTemplate)
     {
         try
         {
@@ -252,10 +252,10 @@ Why you may like it?
 
 
             // 2. Get customer attributes by chat
-            var (userAttributes, promptTokensUserAttributes, completionTokensUserAttributes) = await GetUserAttributes(sessionId, userAttributesPromptTemplate, userMessages, userPrompt);
+            var (userAttributes, promptTokensUserAttributes, completionTokensUserAttributes) = await GetCustomerAttributes(sessionId, customerAttributesPromptTemplate, userMessages, userPrompt);
 
             // TODO: 3 get extra questions for chat
-            var (extraQuestions, promptTokensExtraQuestion, completionTokensExtraQuestions) = (new []{"I like plaid"}, 0, 0);
+            var (extraQuestions, promptTokensExtraQuestion, completionTokensExtraQuestions) = (new List<string>{"I like plaid"}, 0, 0);
 
 
             // 4. Find products
@@ -266,51 +266,57 @@ Why you may like it?
 
 
             // Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
-            Message userPromptMessage = new Message(sessionId, sender: nameof(Participants.User), tokens: default, promptTokens: default, text: userPrompt);
+            Message userMessage = new Message(sessionId, sender: nameof(Participants.User), tokens: default, promptTokens: default, text: userPrompt);
 
             // Create the completion message object to have it's id
-            Message chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokensTotal, promptTokens: promptTokensTotal, text: String.Empty);
+            Message assistantMessage = new Message(
+                sessionId,
+                sender: nameof(Participants.Assistant),
+                tokens: completionTokensTotal,
+                promptTokens: promptTokensTotal,
+                text: productSearchText,
+                products,
+                userAttributes,
+                extraQuestions);
 
 
-
-            // TODO: move found Products to Message.Metadata.Products, do not format here
-            string formattedProducts = products.ToFormattedString(
-                product =>
-                {
-                    string productStr = $"{product.ProductId}  {product.Price:C}  {product.ProductName}";
-
-                    string productId = product.ProductId;
-
-                    // Generate the link dynamically using Razor syntax
-                    return $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail5\"> {productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning('{productId}', '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a> <a href=\"{product.ProductUrl}\" target=\"_blank\">Check out the product!</a>\n";
-                });
-
-            StringBuilder stringBuilder = new StringBuilder();
-
-            stringBuilder.AppendLine("Based on your story I can recommend the following products:");
-            stringBuilder.AppendLine(formattedProducts);
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(new string('-', 20));
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(productSearchText);
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine(new string('-', 20));
-            stringBuilder.AppendLine();
-            stringBuilder.Append("User attributes: ");
-            stringBuilder.AppendLine(userAttributes?.ToString());
-
-            string completionTextWithProducts = stringBuilder.ToString();
-
-            // once we have completion text with products, update it in model
-            chatCompletionMessage.Text = completionTextWithProducts;
+            // string formattedProducts = products.ToFormattedString(
+            //     product =>
+            //     {
+            //         string productStr = $"{product.ProductId}  {product.Price:C}  {product.ProductName}";
+            //
+            //         string productId = product.ProductId;
+            //
+            //         // Generate the link dynamically using Razor syntax
+            //         return $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail5\"> {productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning('{productId}', '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a> <a href=\"{product.ProductUrl}\" target=\"_blank\">Check out the product!</a>\n";
+            //     });
+            //
+            // StringBuilder stringBuilder = new StringBuilder();
+            //
+            // stringBuilder.AppendLine("Based on your story I can recommend the following products:");
+            // stringBuilder.AppendLine(formattedProducts);
+            // stringBuilder.AppendLine();
+            // stringBuilder.AppendLine(new string('-', 20));
+            // stringBuilder.AppendLine();
+            // stringBuilder.AppendLine(productSearchText);
+            // stringBuilder.AppendLine();
+            // stringBuilder.AppendLine(new string('-', 20));
+            // stringBuilder.AppendLine();
+            // stringBuilder.Append("User attributes: ");
+            // stringBuilder.AppendLine(userAttributes?.ToString());
+            //
+            // string completionTextWithProducts = stringBuilder.ToString();
+            //
+            // // once we have completion text with products, update it in model
+            // chatCompletionMessage.Text = completionTextWithProducts;
 
             //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
-            await AddPromptCompletionMessagesAsync(sessionId, userPromptMessage, chatCompletionMessage);
+            await AddPromptCompletionMessagesAsync(sessionId, userMessage, assistantMessage);
 
             return new List<Message>
             {
-                userPromptMessage,
-                chatCompletionMessage
+                userMessage,
+                assistantMessage
             };
         }
         catch (Exception ex)
@@ -320,7 +326,7 @@ Why you may like it?
         }
     }
 
-    private async Task<(UserAttributes?, int, int)> GetUserAttributes(string sessionId, string userAttributesPromptTemplate, string userMessages, string userPrompt)
+    private async Task<(CustomerAttributes?, int, int)> GetCustomerAttributes(string sessionId, string userAttributesPromptTemplate, string userMessages, string userPrompt)
     {
         string userAttributesJson = "";
         int promptTokensUserAttributes = 0;
@@ -337,13 +343,13 @@ Why you may like it?
             (userAttributesJson, promptTokensUserAttributes, completionTokensUserAttributes) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPromptUserAttributes, documents: augmentedContentUserAttributes);
 
 
-            var userAttributes = JsonConvert.DeserializeObject<UserAttributes>(userAttributesJson);
-            userAttributes?.Sanitize();
-            return (userAttributes, promptTokensUserAttributes, completionTokensUserAttributes);
+            var customerAttributes = JsonConvert.DeserializeObject<CustomerAttributes>(userAttributesJson);
+            customerAttributes?.Sanitize();
+            return (customerAttributes, promptTokensUserAttributes, completionTokensUserAttributes);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Cannot get {UserAttributes} from: {UserAttributeJson}, ex: {Exception}", nameof(UserAttributes), userAttributesJson, ex.Message);
+            _logger.LogWarning("Cannot get {UserAttributes} from: {UserAttributeJson}, ex: {Exception}", nameof(CustomerAttributes), userAttributesJson, ex.Message);
             return (null, promptTokensUserAttributes, completionTokensUserAttributes);
         }
     }
@@ -531,7 +537,7 @@ Why you may like it?
         }
     }
 
-    private async Task<(List<ClothesProduct>, int)> GetProducts(string sessionId, string productSearchText, string userMessages, string userPrompt, string collectionName, UserAttributes? userAttributes)
+    private async Task<(List<ClothesProduct>, int)> GetProducts(string sessionId, string productSearchText, string userMessages, string userPrompt, string collectionName, CustomerAttributes? userAttributes)
     {
         string productEmbeddingsPrompt = userMessages + "\n" + userPrompt + "\n" + productSearchText;
         // Get embeddings for chat completion

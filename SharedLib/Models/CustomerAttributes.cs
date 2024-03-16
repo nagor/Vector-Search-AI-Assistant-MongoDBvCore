@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SharedLib.Models;
 
-public class UserAttributes
+public class CustomerAttributes
 {
     private static readonly List<string> Genders = new()
     {
