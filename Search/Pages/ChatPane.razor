@@ -131,6 +131,7 @@
                                 <div class="toast-body">
                                     <i class="bi bi-grip-vertical mr-2 text-black-50"></i>
                                     @{
+                                        // TODO: format message here
                                         MarkupString html = new MarkupString(msg.Text.Replace("\n", "<br />"));
                                     }
                                     @html
@@ -273,8 +274,7 @@
 
         if(_messagesInChat?.Count == 2)
         {
-            string newSessionName;
-            newSessionName = await chatService.SummarizeChatSessionNameAsync(CurrentSession?.SessionId, String.Join(Environment.NewLine, _messagesInChat.First().Text));
+            string newSessionName = await chatService.SummarizeChatSessionNameAsync(CurrentSession?.SessionId, String.Join(Environment.NewLine, _messagesInChat.First().Text));
 
             if (CurrentSession is not null)
             {

@@ -112,7 +112,7 @@ Why you may like it?
     {
         ArgumentNullException.ThrowIfNull(sessionId);
 
-        await CacheSession(sessionId);
+        await CheckIfSessionCached(sessionId);
 
         List<Message> chatMessages = new();
 
@@ -233,58 +233,45 @@ Why you may like it?
         }
     }
 
+
+
+
     public async Task<List<Message>> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string userAttributesPromptTemplate)
     {
         try
         {
             ArgumentNullException.ThrowIfNull(sessionId);
 
-            await CacheSession(sessionId);
+            await CheckIfSessionCached(sessionId);
 
             // Get the most recent conversation history up to _maxConversationTokens
-            string userMessages = GetConversationHistory(sessionId, nameof(Participants.User));
+            string userMessages = GetConversationHistory(sessionId, sender: nameof(Participants.User));
 
-            // 1. Get product description by chat
+            // 1. Get extended desired products search text by chat
+            var (productSearchText, promptTokensProductSearchText, completionTokensProductSearchText) = await GetProductSearchText(sessionId, userPromptTemplate, userMessages, userPrompt);
 
-            string productSearchPrompt = string.IsNullOrWhiteSpace(userPromptTemplate) ? UserPromptTemplate : userPromptTemplate;
-            // Extend user prompt with predefined template with PARAGRAPH
-            productSearchPrompt = productSearchPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
 
-            // Construct our prompts: here we can use previous conversation ans maybe some data context.
-            // We omit conversation and data for now.
-            // Trim payload to prevent exceeding token limits.
-            (string augmentedContent, string conversationAndUserPrompt) = BuildPrompts(productSearchPrompt, conversation: "", retrievedData: "");
+            // 2. Get customer attributes by chat
+            var (userAttributes, promptTokensUserAttributes, completionTokensUserAttributes) = await GetUserAttributes(sessionId, userAttributesPromptTemplate, userMessages, userPrompt);
 
-            // Generate the completion from Azure OpenAI to have product extended description by chat
-            (string completionText, int promptTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPrompt, documents: augmentedContent);
+            // TODO: 3 get extra questions for chat
+            var (extraQuestions, promptTokensExtraQuestion, completionTokensExtraQuestions) = (new []{"I like plaid"}, 0, 0);
 
-            // 2. Get customer attributes from story
-            string userAttributesPrompt = string.IsNullOrWhiteSpace(userAttributesPromptTemplate) ? UserAttributesPromptTemplate : userAttributesPromptTemplate;
-            userAttributesPrompt = userAttributesPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
 
-            (string augmentedContentUserAttributes, string conversationAndUserPromptUserAttributes) = BuildPrompts(userAttributesPrompt, conversation: "", retrievedData: "");
+            // 4. Find products
+            var (products, tokensProductSearchEmbeddings) = await GetProducts(sessionId, productSearchText, userMessages, userPrompt, collectionName, userAttributes);
 
-            // Generate the completion from Azure OpenAI to have product extended description by chat
-            (string userAttributesJson, int promptTokensUserAttributes, int completionTokensUserAttributes) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPromptUserAttributes, documents: augmentedContentUserAttributes);
+            int promptTokensTotal = promptTokensProductSearchText + promptTokensUserAttributes + promptTokensExtraQuestion;
+            int completionTokensTotal = completionTokensProductSearchText + completionTokensUserAttributes + completionTokensExtraQuestions + tokensProductSearchEmbeddings;
 
-            promptTokens += promptTokensUserAttributes;
-            completionTokens += completionTokensUserAttributes;
-
-            // TODO: move found UserAttributes to Message.Metadata.UserAttributes
-            UserAttributes? userAttributes = GetUserAttributes(userAttributesJson);
-
-            string productEmbeddingsPattern = userPrompt + "\n" + completionText;
 
             // Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
-            Message userPromptMessage = new Message(sessionId, sender: nameof(Participants.User), tokens: completionTokens, promptTokens: default, text: userPrompt);
-
-            // Get embeddings for chat completion
-            (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, productEmbeddingsPattern);
+            Message userPromptMessage = new Message(sessionId, sender: nameof(Participants.User), tokens: default, promptTokens: default, text: userPrompt);
 
             // Create the completion message object to have it's id
-            Message chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens, text: String.Empty);
+            Message chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokensTotal, promptTokens: promptTokensTotal, text: String.Empty);
 
-            List<ClothesProduct> products = await GetProducts(collectionName, promptVectors, userAttributes);
+
 
             // TODO: move found Products to Message.Metadata.Products, do not format here
             string formattedProducts = products.ToFormattedString(
@@ -305,7 +292,7 @@ Why you may like it?
             stringBuilder.AppendLine();
             stringBuilder.AppendLine(new string('-', 20));
             stringBuilder.AppendLine();
-            stringBuilder.AppendLine(completionText);
+            stringBuilder.AppendLine(productSearchText);
             stringBuilder.AppendLine();
             stringBuilder.AppendLine(new string('-', 20));
             stringBuilder.AppendLine();
@@ -333,7 +320,152 @@ Why you may like it?
         }
     }
 
-    private async Task CacheSession(string sessionId)
+    private async Task<(UserAttributes?, int, int)> GetUserAttributes(string sessionId, string userAttributesPromptTemplate, string userMessages, string userPrompt)
+    {
+        string userAttributesJson = "";
+        int promptTokensUserAttributes = 0;
+        int completionTokensUserAttributes = 0;
+
+        try
+        {
+            string userAttributesPrompt = string.IsNullOrWhiteSpace(userAttributesPromptTemplate) ? UserAttributesPromptTemplate : userAttributesPromptTemplate;
+            userAttributesPrompt = userAttributesPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
+
+            (string augmentedContentUserAttributes, string conversationAndUserPromptUserAttributes) = BuildPrompts(userAttributesPrompt, conversation: "", retrievedData: "");
+
+            // Generate the completion from Azure OpenAI to have product extended description by chat
+            (userAttributesJson, promptTokensUserAttributes, completionTokensUserAttributes) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPromptUserAttributes, documents: augmentedContentUserAttributes);
+
+
+            var userAttributes = JsonConvert.DeserializeObject<UserAttributes>(userAttributesJson);
+            userAttributes?.Sanitize();
+            return (userAttributes, promptTokensUserAttributes, completionTokensUserAttributes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Cannot get {UserAttributes} from: {UserAttributeJson}, ex: {Exception}", nameof(UserAttributes), userAttributesJson, ex.Message);
+            return (null, promptTokensUserAttributes, completionTokensUserAttributes);
+        }
+    }
+
+    private async Task<(string, int, int)> GetProductSearchText(string sessionId, string userPromptTemplate, string userMessages, string userPrompt)
+    {
+        string productSearchPrompt = string.IsNullOrWhiteSpace(userPromptTemplate) ? UserPromptTemplate : userPromptTemplate;
+        // Extend user prompt with predefined template with PARAGRAPH
+        productSearchPrompt = productSearchPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
+
+        // Construct our prompts: here we can use previous conversation ans maybe some data context.
+        // We omit conversation and data for now.
+        // Trim payload to prevent exceeding token limits.
+        (string augmentedContent, string trimmedProductSearchPrompt) = BuildPrompts(productSearchPrompt, conversation: "", retrievedData: "");
+
+        // Generate the completion from Azure OpenAI to have desired products description by chat
+        (string completionText, int promptTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, trimmedProductSearchPrompt, documents: augmentedContent);
+
+        return (completionText, promptTokens, completionTokens);
+    }
+
+    // public async Task<List<Message>> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string userAttributesPromptTemplate)
+    // {
+    //     try
+    //     {
+    //         ArgumentNullException.ThrowIfNull(sessionId);
+    //
+    //         await CacheSession(sessionId);
+    //
+    //         // Get the most recent conversation history up to _maxConversationTokens
+    //         string userMessages = GetConversationHistory(sessionId, nameof(Participants.User));
+    //
+    //         // 1. Get product description by chat
+    //
+    //         string productSearchPrompt = string.IsNullOrWhiteSpace(userPromptTemplate) ? UserPromptTemplate : userPromptTemplate;
+    //         // Extend user prompt with predefined template with PARAGRAPH
+    //         productSearchPrompt = productSearchPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
+    //
+    //         // Construct our prompts: here we can use previous conversation ans maybe some data context.
+    //         // We omit conversation and data for now.
+    //         // Trim payload to prevent exceeding token limits.
+    //         (string augmentedContent, string conversationAndUserPrompt) = BuildPrompts(productSearchPrompt, conversation: "", retrievedData: "");
+    //
+    //         // Generate the completion from Azure OpenAI to have product extended description by chat
+    //         (string completionText, int promptTokens, int completionTokens) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPrompt, documents: augmentedContent);
+    //
+    //         // 2. Get customer attributes from story
+    //         string userAttributesPrompt = string.IsNullOrWhiteSpace(userAttributesPromptTemplate) ? UserAttributesPromptTemplate : userAttributesPromptTemplate;
+    //         userAttributesPrompt = userAttributesPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
+    //
+    //         (string augmentedContentUserAttributes, string conversationAndUserPromptUserAttributes) = BuildPrompts(userAttributesPrompt, conversation: "", retrievedData: "");
+    //
+    //         // Generate the completion from Azure OpenAI to have product extended description by chat
+    //         (string userAttributesJson, int promptTokensUserAttributes, int completionTokensUserAttributes) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPromptUserAttributes, documents: augmentedContentUserAttributes);
+    //
+    //         promptTokens += promptTokensUserAttributes;
+    //         completionTokens += completionTokensUserAttributes;
+    //
+    //         // TODO: move found UserAttributes to Message.Metadata.UserAttributes
+    //         UserAttributes? userAttributes = GetUserAttributes(userAttributesJson);
+    //
+    //         string productEmbeddingsPattern = userPrompt + "\n" + completionText;
+    //
+    //         // Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
+    //         Message userPromptMessage = new Message(sessionId, sender: nameof(Participants.User), tokens: completionTokens, promptTokens: default, text: userPrompt);
+    //
+    //         // Get embeddings for chat completion
+    //         (float[] promptVectors, int embeddingTokens) = await _openAiService.GetEmbeddingsAsync(sessionId, productEmbeddingsPattern);
+    //
+    //         // Create the completion message object to have it's id
+    //         Message chatCompletionMessage = new Message(sessionId, nameof(Participants.Assistant), tokens: completionTokens + embeddingTokens, promptTokens, text: String.Empty);
+    //
+    //         List<ClothesProduct> products = await GetProducts(collectionName, promptVectors, userAttributes);
+    //
+    //         // TODO: move found Products to Message.Metadata.Products, do not format here
+    //         string formattedProducts = products.ToFormattedString(
+    //             product =>
+    //             {
+    //                 string productStr = $"{product.ProductId}  {product.Price:C}  {product.ProductName}";
+    //
+    //                 string productId = product.ProductId;
+    //
+    //                 // Generate the link dynamically using Razor syntax
+    //                 return $"<img src=\"{product.ImageUrl}\" alt=\"Description of image\" class=\"thumbnail5\"> {productStr} <a href=\"#\" onclick=\"ProductsHelper.giveReasoning('{productId}', '{userPromptMessage.Id}', '{chatCompletionMessage.Id}')\">Why you may like it?</a> <a href=\"{product.ProductUrl}\" target=\"_blank\">Check out the product!</a>\n";
+    //             });
+    //
+    //         StringBuilder stringBuilder = new StringBuilder();
+    //
+    //         stringBuilder.AppendLine("Based on your story I can recommend the following products:");
+    //         stringBuilder.AppendLine(formattedProducts);
+    //         stringBuilder.AppendLine();
+    //         stringBuilder.AppendLine(new string('-', 20));
+    //         stringBuilder.AppendLine();
+    //         stringBuilder.AppendLine(completionText);
+    //         stringBuilder.AppendLine();
+    //         stringBuilder.AppendLine(new string('-', 20));
+    //         stringBuilder.AppendLine();
+    //         stringBuilder.Append("User attributes: ");
+    //         stringBuilder.AppendLine(userAttributes?.ToString());
+    //
+    //         string completionTextWithProducts = stringBuilder.ToString();
+    //
+    //         // once we have completion text with products, update it in model
+    //         chatCompletionMessage.Text = completionTextWithProducts;
+    //
+    //         //Add the user prompt and completion to cache, then persist to Cosmos in a transaction
+    //         await AddPromptCompletionMessagesAsync(sessionId, userPromptMessage, chatCompletionMessage);
+    //
+    //         return new List<Message>
+    //         {
+    //             userPromptMessage,
+    //             chatCompletionMessage
+    //         };
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         _logger.LogError("{ChatCompletionProductSearchAsyncName}: {ExMessage}", nameof(GetChatCompletionProductSearchAsync), ex.Message);
+    //         throw;
+    //     }
+    // }
+
+    private async Task CheckIfSessionCached(string sessionId)
     {
         if (!_sessions.Exists(session => session.SessionId == sessionId)) // session is not cached, go read from database
         {
@@ -399,14 +531,18 @@ Why you may like it?
         }
     }
 
-    private async Task<List<ClothesProduct>> GetProducts(string collectionName, float[] promptVectors, UserAttributes? userAttributes)
+    private async Task<(List<ClothesProduct>, int)> GetProducts(string sessionId, string productSearchText, string userMessages, string userPrompt, string collectionName, UserAttributes? userAttributes)
     {
-        //Do vector search on tags found by user prompt
-        string retrievedDocuments = await _mongoDbService.VectorSearchAsync(collectionName, promptVectors);
+        string productEmbeddingsPrompt = userMessages + "\n" + userPrompt + "\n" + productSearchText;
+        // Get embeddings for chat completion
+        (float[] productSearchEmbeddings, int tokensProductSearchEmbeddings) = await _openAiService.GetEmbeddingsAsync(sessionId, productEmbeddingsPrompt);
+
+        // Do vector search on tags found by user prompt
+        string retrievedDocuments = await _mongoDbService.VectorSearchAsync(collectionName, productSearchEmbeddings);
 
         // Deserialize BsonDocuments to a list of C# objects (ClothesProduct model)
         List<ClothesProduct> clothesProducts = ClothesProductExtensions.GetProducts(retrievedDocuments);
-        List<ClothesProduct> filteredProducts = clothesProducts.Take(10).ToList();
+        List<ClothesProduct> filteredProducts = clothesProducts.ToList();
 
         // Filter found products by user attributes
         if (userAttributes != null)
@@ -415,32 +551,19 @@ Why you may like it?
                 .Where(cp => userAttributes.Gender == null || cp.Gender == userAttributes.Gender)
                 .Where(cp => userAttributes.MinPrice == null || userAttributes.MinPrice == 0 || Equals(userAttributes.MinPrice, userAttributes.MaxPrice) || cp.Price >= userAttributes.MinPrice)
                 .Where(cp => userAttributes.MaxPrice == null || userAttributes.MaxPrice == 0 || Equals(userAttributes.MaxPrice, userAttributes.MinPrice) || cp.Price <= userAttributes.MaxPrice)
-                .Take(10)
                 .ToList();
 
+            // If no products matching, return all products
             if (filteredProducts.Count == 0)
             {
-                filteredProducts = clothesProducts.Take(10).ToList();
+                filteredProducts = clothesProducts.ToList();
             }
         }
 
-        return filteredProducts;
+        return (filteredProducts, tokensProductSearchEmbeddings);
     }
 
-    private UserAttributes? GetUserAttributes(string userAttributesJson)
-    {
-        try
-        {
-            var userAttributes = JsonConvert.DeserializeObject<UserAttributes>(userAttributesJson);
-            userAttributes?.Sanitize();
-            return userAttributes;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Cannot get {UserAttributes} from: {UserAttributeJson}, ex: {Exception}", nameof(UserAttributes), userAttributesJson, ex.Message);
-            return null;
-        }
-    }
+
 
     /// <summary>
     /// Estimate the token usage for OpenAI completion to prevent exceeding the OpenAI model's maximum token limit. This function estimates the
@@ -531,7 +654,7 @@ Why you may like it?
 
         List<Message> conversationMessages = _sessions[index].Messages.ToList(); //make a full copy
 
-        //Iterate through these in reverse order to get the most recent conversation history up to _maxConversationTokens
+        // Iterate through these in reverse order to get the most recent conversation history up to _maxConversationTokens
         var trimmedMessages = conversationMessages
             .Where(m=> string.IsNullOrWhiteSpace(sender) || m.Sender == sender)
             .OrderByDescending(m => m.TimeStamp)
@@ -541,7 +664,7 @@ Why you may like it?
 
         trimmedMessages.Reverse();
 
-        //Return as a string
+        // Return as a string
         string conversation = string.Join(Environment.NewLine, trimmedMessages.ToArray());
 
         return conversation;
