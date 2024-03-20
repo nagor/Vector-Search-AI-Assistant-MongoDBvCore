@@ -62,6 +62,7 @@ I am looking for clothes for my daughter's tennis game on the weekend. I prefer 
 I am looking for something special for my date night.
 ### OUTPUT ###
 {""gender"":""Womens""}
+### INPUT ###
 I am looking for something special for my date night. I want something special from $400
 ### OUTPUT ###
 {""gender"":""Womens"", ""minPrice"": 400, ""maxPrice"":0}";
@@ -86,6 +87,22 @@ Why you may like it?
 
 [CHAT_COMPLETION]
 ";
+
+    public const string ExtraQuestionsPromptTemplate = @"Below is my story. I am trying to purchase some apparel.
+---
+### STORY ###
+[USER_PROMPT]
+---
+Think of 5 additional apparel pieces I might be interested in based on my story. You MUST return a JSON array of 5 strings.
+Be precise. Do not show reasoning.
+### INPUT ###
+I am looking for something special for my date night.
+### OUTPUT ###
+[""Black dress"", ""High heels"", ""Elegant jewelry"", ""Red lipstick"", ""Stylish handbag""]
+### INPUT ###
+I have a business meeting planned
+### OUTPUT ###
+[""Formal suit"", ""Tie"", ""Leather shoes"", ""Briefcase"", ""Wristwatch""]";
 
     public ChatService(OpenAiService openAiService, MongoDbService mongoDbService, ILogger logger)
     {
@@ -238,7 +255,7 @@ Why you may like it?
 
 
 
-    public async Task<List<Message>> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string customerAttributesPromptTemplate)
+    public async Task<List<Message>> GetChatCompletionProductSearchAsync(string? sessionId, string userPrompt, string collectionName, string userPromptTemplate, string customerAttributesPromptTemplate, string extraQuestionsPromptTemplate)
     {
         try
         {
@@ -256,9 +273,8 @@ Why you may like it?
             // 2. Get customer attributes by chat
             var (userAttributes, promptTokensUserAttributes, completionTokensUserAttributes) = await GetCustomerAttributes(sessionId, customerAttributesPromptTemplate, userMessages, userPrompt);
 
-            // TODO: 3 get extra questions for chat
-            var (extraQuestions, promptTokensExtraQuestion, completionTokensExtraQuestions) = (new List<string>{"I like plaid"}, 0, 0);
-
+            // 3. Get extra questions for chat
+            var (extraQuestions, promptTokensExtraQuestion, completionTokensExtraQuestions) = await GetExtraQuestions(sessionId, extraQuestionsPromptTemplate, userMessages, userPrompt);
 
             // 4. Find products
             var (products, tokensProductSearchEmbeddings) = await GetProducts(sessionId, productSearchText, userMessages, userPrompt, collectionName, userAttributes);
@@ -322,6 +338,33 @@ Why you may like it?
         {
             _logger.LogWarning("Cannot get {UserAttributes} from: {UserAttributeJson}, ex: {Exception}", nameof(CustomerAttributes), userAttributesJson, ex.Message);
             return (null, promptTokensUserAttributes, completionTokensUserAttributes);
+        }
+    }
+
+    private async Task<(List<string>?, int, int)> GetExtraQuestions(string sessionId, string extraQuestionsPromptTemplate, string userMessages, string userPrompt)
+    {
+        string extraQuestionsJson = "";
+        int promptTokensExtraQuestions = 0;
+        int completionTokensExtraQuestions = 0;
+
+        try
+        {
+            string extraQuestionsPrompt = string.IsNullOrWhiteSpace(extraQuestionsPromptTemplate) ? ExtraQuestionsPromptTemplate : extraQuestionsPromptTemplate;
+            extraQuestionsPrompt = extraQuestionsPrompt.Replace(UserPromptMarker, userMessages + "\n" + userPrompt);
+
+            (string augmentedContentExtraQuestions, string conversationAndUserPromptExtraQuestions) = BuildPrompts(extraQuestionsPrompt, conversation: "", retrievedData: "");
+
+            // Generate extra questions
+            (extraQuestionsJson, promptTokensExtraQuestions, completionTokensExtraQuestions) = await _openAiService.GetChatCompletionAsync(sessionId, conversationAndUserPromptExtraQuestions, documents: augmentedContentExtraQuestions);
+
+
+            var extraQuestions = JsonConvert.DeserializeObject<List<string>?>(extraQuestionsJson);
+            return (extraQuestions, promptTokensExtraQuestions, completionTokensExtraQuestions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Cannot get Extra Questions list from: {ExtraQuestionsJson}, ex: {Exception}",extraQuestionsJson, ex.Message);
+            return (null, promptTokensExtraQuestions, completionTokensExtraQuestions);
         }
     }
 

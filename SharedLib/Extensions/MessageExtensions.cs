@@ -29,6 +29,8 @@ public static class MessageExtensions
         stringBuilder.AppendLine();
         stringBuilder.Append("User attributes: ");
         stringBuilder.AppendLine(message.CustomerAttributes?.ToString() ?? "No user attributes found.");
+        stringBuilder.Append("Try adding these: ");
+        stringBuilder.AppendLine(message.ExtraQuestions is { Count: > 0 } ? string.Join(", ", message.ExtraQuestions) : "No extra questions.");
 
         string formattedMessage = stringBuilder.ToString();
         return formattedMessage;

@@ -53,7 +53,7 @@ public class ChatController : ControllerBase
             return BadRequest("UserPrompt is required.");
         }
 
-        List<Message> messages = await _chatService.GetChatCompletionProductSearchAsync(sessionId, message.UserPrompt, "clothes", null, null);
+        List<Message> messages = await _chatService.GetChatCompletionProductSearchAsync(sessionId, message.UserPrompt, "clothes", null, null, null);
         return Ok(messages);
     }
 }

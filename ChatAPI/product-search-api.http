@@ -51,3 +51,24 @@ Content-Type: application/json
 {
   "userPrompt": "I am a woman"
 }
+
+###
+
+POST {{api-url}}/Chat/messages/{{sessionId}}
+ApiKey: {{api-key}}
+accept: */*
+Content-Type: application/json
+
+{
+  "userPrompt": "Lightweight dress"
+}
+
+###
+POST {{api-url}}/Chat/messages/{{sessionId}}
+ApiKey: {{api-key}}
+accept: */*
+Content-Type: application/json
+
+{
+  "userPrompt": "Statement earrings"
+}
