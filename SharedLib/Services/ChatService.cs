@@ -23,10 +23,12 @@ public class ChatService
     private readonly ILogger _logger;
 
     public const string DefaultCollection = "clothes";
+    public const string DefaultProductCategory = "Others";
 
     private const string UserPromptMarker = "[USER_PROMPT]";
     private const string ChatCompletionMarker = "[CHAT_COMPLETION]";
     private const string ProductMarker = "[PRODUCT]";
+    private const string CategoriesListMarker = "[CATEGORIES_LIST]";
 
     public const string UserPromptTemplate = @"Below is my story. I am trying to purchase some apparel.
 ---
@@ -103,6 +105,52 @@ I am looking for something special for my date night.
 I have a business meeting planned
 ### OUTPUT ###
 [""Formal suit"", ""Tie"", ""Leather shoes"", ""Briefcase"", ""Wristwatch""]";
+
+    public const string ProductCategoriesPromptTemplate = @"You are given list of categories in machine format.
+------
+### CATEGORIES ###
+[CATEGORIES_LIST]
+-------
+- Group categories into exactly 5 groups based on similarity and popularity.
+- You MUST name each group summarizing categories in this group, use not more than 5 words for name.
+- Map each of given categories to one of the named groups.
+Be precise. Do not show reasoning. You MUST return JSON dictionary with EACH product categories as keys and mapped groups as values.
+-------
+Few examples:
+### INPUT ###
+girls~clothing~dresses jumpsuits~day|girls~clothing~dresses jumpsuits~party special occasion
+mens~clothing~shirts~classic
+boys~clothing~pajamas~slippers|boys~shoes~slippers
+womens~clothing~dresses jumpsuits|womens~features~new arrivals
+womens~shoes~boots
+womens~shoes~heels
+null
+boys~clothing~pajamas~slippers|boys~shoes~slippers
+### OUTPUT ###
+{
+    ""girls~clothing~dresses jumpsuits~day|girls~clothing~dresses jumpsuits~party special occasion"": ""Girl's Clothing"",
+    ""mens~clothing~shirts~classic"": ""Men's Clothing"",
+    ""boys~clothing~pajamas~slippers|boys~shoes~slippers"": ""Boy's Clothing"",
+    ""womens~clothing~dresses jumpsuits|womens~features~new arrivals"": ""Women's Clothing"",
+    ""womens~shoes~boots"": ""Women's Shoes"",
+    ""womens~shoes~heels"": ""Women's Shoes""
+}
+### INPUT ###
+girls~clothing~dresses jumpsuits~day|girls~clothing~dresses jumpsuits~party special occasion
+mens~clothing~shirts~classic
+mens~clothing~shirts~classic
+mens~clothing~shirts~classic
+mens~clothing~t-shirts
+mens~clothing~t-shirts
+mens~clothing~t-shirts
+boys~clothing~pajamas~slippers|boys~shoes~slippers
+### OUTPUT ###
+{
+    ""girls~clothing~dresses jumpsuits~day|girls~clothing~dresses jumpsuits~party special occasion"": ""Girl's Clothing"",
+    ""mens~clothing~shirts~classic"": ""Men's Clothing"",
+    ""mens~clothing~t-shirts"": ""Men's Clothing"",
+    ""boys~clothing~pajamas~slippers|boys~shoes~slippers"": ""Boy's Clothing""
+}";
 
     public ChatService(OpenAiService openAiService, MongoDbService mongoDbService, ILogger logger)
     {
@@ -279,9 +327,11 @@ I have a business meeting planned
             // 4. Find products
             var (products, tokensProductSearchEmbeddings) = await GetProducts(sessionId, productSearchText, userMessages, userPrompt, collectionName, userAttributes);
 
-            int promptTokensTotal = promptTokensProductSearchText + promptTokensUserAttributes + promptTokensExtraQuestion;
-            int completionTokensTotal = completionTokensProductSearchText + completionTokensUserAttributes + completionTokensExtraQuestions + tokensProductSearchEmbeddings;
+            // 5. Get product categories by chat
+            var (promptTokensProductCategories, completionTokensProductCategories) = await PopulateProductCategoriesAsync(sessionId, products);
 
+            int promptTokensTotal = promptTokensProductSearchText + promptTokensUserAttributes + promptTokensExtraQuestion + promptTokensProductCategories;
+            int completionTokensTotal = completionTokensProductSearchText + completionTokensUserAttributes + completionTokensExtraQuestions + completionTokensProductCategories + tokensProductSearchEmbeddings;
 
             // Create the prompt message object. Created here to give it a timestamp that precedes the completion message.
             Message userMessage = new Message(sessionId, sender: nameof(Participants.User), tokens: default, promptTokens: default, text: userPrompt);
@@ -311,6 +361,58 @@ I have a business meeting planned
             _logger.LogError("{ChatCompletionProductSearchAsyncName}: {ExMessage}", nameof(GetChatCompletionProductSearchAsync), ex.Message);
             throw;
         }
+    }
+
+    private async Task<(int promptTokensProductCategories, int completionTokensProductCategories)> PopulateProductCategoriesAsync(string sessionId, List<ClothesProduct> products)
+    {
+        string productCategoriesList = string.Join("\n", products
+            .Select(p => p.Categories)
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+        );
+
+        // Get human-readable product categories by chat
+        var (productCategories, promptTokensProductCategories, completionTokensProductCategories) = await GetProductCategories(sessionId, ProductCategoriesPromptTemplate, productCategoriesList);
+        if(productCategories is null || productCategories.Count == 0)
+        {
+            // set default category
+            foreach (var product in products)
+            {
+                product.Category = DefaultProductCategory;
+            }
+            return (promptTokensProductCategories, completionTokensProductCategories);
+        }
+
+        // Add product categories to the products
+        foreach (var product in products)
+        {
+            if (product.Categories is null)
+            {
+                product.Category = DefaultProductCategory;
+                continue;
+            }
+
+            if (productCategories.TryGetValue(product.Categories, out var category))
+            {
+                product.Category = category;
+            }
+            else
+            {
+                // Try split categories by | and find any of them in the productCategories
+                var categories = product.Categories.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var cat in categories)
+                {
+                    if (productCategories.TryGetValue(cat, out category))
+                    {
+                        product.Category = category;
+                        break;
+                    }
+                }
+                // if no category found, set it to "Others"
+                product.Category ??= DefaultProductCategory;
+            }
+        }
+
+        return (promptTokensProductCategories, completionTokensProductCategories);
     }
 
     private async Task<(CustomerAttributes?, int, int)> GetCustomerAttributes(string sessionId, string userAttributesPromptTemplate, string userMessages, string userPrompt)
@@ -365,6 +467,35 @@ I have a business meeting planned
         {
             _logger.LogWarning("Cannot get Extra Questions list from: {ExtraQuestionsJson}, ex: {Exception}",extraQuestionsJson, ex.Message);
             return (null, promptTokensExtraQuestions, completionTokensExtraQuestions);
+        }
+    }
+
+    private async Task<(Dictionary<string, string>?, int, int)> GetProductCategories(string sessionId, string productCategoriesPromptTemplate, string productCategoriesList)
+    {
+        string productCategoriesJson = "";
+        int promptTokensProductCategories = 0;
+        int completionTokensProductCategories = 0;
+
+        try
+        {
+            string productCategoriesPrompt = string.IsNullOrWhiteSpace(productCategoriesPromptTemplate) ? ProductCategoriesPromptTemplate : productCategoriesPromptTemplate;
+            productCategoriesPrompt = productCategoriesPrompt.Replace(CategoriesListMarker, productCategoriesList);
+
+            (string augmentedContentProductCategories, string conversationAndUserPromptProductCategories) = BuildPrompts(productCategoriesPrompt, conversation: "", retrievedData: "");
+
+            (productCategoriesJson, promptTokensProductCategories, completionTokensProductCategories) = await _openAiService.GetChatCompletionAsync(
+                sessionId,
+                conversationAndUserPromptProductCategories,
+                documents: augmentedContentProductCategories,
+                systemMessage: "You are an AI assistant that helps people find information.");
+
+            var productCategories = JsonConvert.DeserializeObject<Dictionary<string, string>?>(productCategoriesJson);
+            return (productCategories, promptTokensProductCategories, completionTokensProductCategories);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Cannot get Product Categories from: {ProductCategoriesJson}, ex: {Exception}",productCategoriesJson, ex.Message);
+            return (null, promptTokensProductCategories, completionTokensProductCategories);
         }
     }
 

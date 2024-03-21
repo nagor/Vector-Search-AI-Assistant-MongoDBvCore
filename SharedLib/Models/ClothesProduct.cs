@@ -36,4 +36,8 @@ public class ClothesProduct
     [BsonElement("link")]
     public string ProductUrl { get; set; }
 
+    [BsonElement("categories")]
+    public string? Categories { get; set; }
+
+    public string? Category { get; set; }
 }

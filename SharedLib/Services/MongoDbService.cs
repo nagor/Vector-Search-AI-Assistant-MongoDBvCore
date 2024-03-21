@@ -229,7 +229,8 @@ public class MongoDbService
                             {"description_generated", 1},
                             {"color", 1},
                             {"image_link", 1},
-                            {"link", 1}
+                            {"link", 1},
+                            {"categories", 1}
                             // map fields
                             // {"id", "$data.id"},
                             // {"imageUrl", "$data.styleImages.default.imageURL"},
@@ -423,7 +424,8 @@ public class MongoDbService
                     {"description_generated", 1},
                     {"color", 1},
                     {"image_link", 1},
-                    {"link", 1}
+                    {"link", 1},
+                    {"categories", 1}
                 })
             };
 

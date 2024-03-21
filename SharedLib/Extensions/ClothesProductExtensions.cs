@@ -2,6 +2,7 @@ using System.Text;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using SharedLib.Models;
+using SharedLib.Services;
 
 namespace SharedLib.Extensions;
 
@@ -26,7 +27,7 @@ public static class ClothesProductExtensions
 
     public static string ToFormattedString(this ClothesProduct product)
     {
-        return $"{product.ProductId} {product.Price:C} {product.ProductName}\n{product.Gender} {product.PrimaryColor}\n{product.Description}\n{product.DescriptionGenerated}";
+        return $"{product.ProductId} {product.Price:C} {product.ProductName}\n{product.Gender} {product.PrimaryColor} {product.Category ?? ChatService.DefaultProductCategory}\n{product.Description}\n{product.DescriptionGenerated}";
     }
 
     public static List<ClothesProduct> GetProducts(string bsonData)
