@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.25.53.49325",
-      "templateHash": "8568248688616150155"
+      "version": "0.26.54.24096",
+      "templateHash": "3683907452074157298"
     }
   },
   "parameters": {
@@ -145,7 +145,7 @@
   "resources": [
     {
       "type": "Microsoft.DocumentDB/mongoClusters",
-      "apiVersion": "2023-03-01-preview",
+      "apiVersion": "2024-02-15-preview",
       "name": "[variables('mongovCoreSettings').mongoClusterName]",
       "location": "[parameters('location')]",
       "properties": {
@@ -165,7 +165,7 @@
     },
     {
       "type": "Microsoft.DocumentDB/mongoClusters/firewallRules",
-      "apiVersion": "2023-03-01-preview",
+      "apiVersion": "2024-02-15-preview",
       "name": "[format('{0}/{1}', variables('mongovCoreSettings').mongoClusterName, 'allowAzure')]",
       "properties": {
         "startIpAddress": "0.0.0.0",
@@ -177,7 +177,7 @@
     },
     {
       "type": "Microsoft.DocumentDB/mongoClusters/firewallRules",
-      "apiVersion": "2023-03-01-preview",
+      "apiVersion": "2024-02-15-preview",
       "name": "[format('{0}/{1}', variables('mongovCoreSettings').mongoClusterName, 'allowAll')]",
       "properties": {
         "startIpAddress": "0.0.0.0",

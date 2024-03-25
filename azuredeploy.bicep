@@ -112,7 +112,7 @@ var appServiceSettings = {
   }
 }
 
-resource mongoCluster 'Microsoft.DocumentDB/mongoClusters@2023-03-01-preview' = {
+resource mongoCluster 'Microsoft.DocumentDB/mongoClusters@2024-02-15-preview' = {
   name: mongovCoreSettings.mongoClusterName
   location: location
   properties: {
@@ -131,7 +131,7 @@ resource mongoCluster 'Microsoft.DocumentDB/mongoClusters@2023-03-01-preview' = 
   }
 }
 
-resource mongoFirewallRulesAllowAzure 'Microsoft.DocumentDB/mongoClusters/firewallRules@2023-03-01-preview' = {
+resource mongoFirewallRulesAllowAzure 'Microsoft.DocumentDB/mongoClusters/firewallRules@2024-02-15-preview' = {
   parent: mongoCluster
   name: 'allowAzure'
   properties: {
@@ -140,7 +140,7 @@ resource mongoFirewallRulesAllowAzure 'Microsoft.DocumentDB/mongoClusters/firewa
   }
 }
 
-resource mongoFirewallRulesAllowAll 'Microsoft.DocumentDB/mongoClusters/firewallRules@2023-03-01-preview' = {
+resource mongoFirewallRulesAllowAll 'Microsoft.DocumentDB/mongoClusters/firewallRules@2024-02-15-preview' = {
   parent: mongoCluster
   name: 'allowAll'
   properties: {

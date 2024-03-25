@@ -1,0 +1,103 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.26.54.24096",
+      "templateHash": "5565090228688410565"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "allowedValues": [
+        "australiaeast",
+        "westeurope",
+        "japaneast",
+        "uksouth",
+        "eastus",
+        "eastus2",
+        "southcentralus"
+      ],
+      "metadata": {
+        "description": "Location where all resources will be deployed. This value defaults to the **East US** region."
+      }
+    },
+    "mongoClusterName": {
+      "type": "string",
+      "maxLength": 15,
+      "metadata": {
+        "description": "MongoDB vCore Cluster Name"
+      }
+    },
+    "mongoDbUserName": {
+      "type": "string",
+      "metadata": {
+        "description": "MongoDB vCore user Name. No dashes."
+      }
+    },
+    "mongoDbPassword": {
+      "type": "securestring",
+      "minLength": 8,
+      "maxLength": 256,
+      "metadata": {
+        "description": "MongoDB vCore password. 8-256 characters, 3 of the following: lower case, upper case, numeric, symbol."
+      }
+    }
+  },
+  "variables": {
+    "mongovCoreSettings": {
+      "mongoClusterName": "[parameters('mongoClusterName')]",
+      "mongoClusterLogin": "[parameters('mongoDbUserName')]",
+      "mongoClusterPassword": "[parameters('mongoDbPassword')]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.DocumentDB/mongoClusters",
+      "apiVersion": "2024-02-15-preview",
+      "name": "[variables('mongovCoreSettings').mongoClusterName]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "administratorLogin": "[variables('mongovCoreSettings').mongoClusterLogin]",
+        "administratorLoginPassword": "[variables('mongovCoreSettings').mongoClusterPassword]",
+        "serverVersion": "5.0",
+        "nodeGroupSpecs": [
+          {
+            "kind": "Shard",
+            "sku": "M30",
+            "diskSizeGB": 128,
+            "enableHa": false,
+            "nodeCount": 1
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/mongoClusters/firewallRules",
+      "apiVersion": "2024-02-15-preview",
+      "name": "[format('{0}/{1}', variables('mongovCoreSettings').mongoClusterName, 'allowAzure')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/mongoClusters', variables('mongovCoreSettings').mongoClusterName)]"
+      ]
+    },
+    {
+      "type": "Microsoft.DocumentDB/mongoClusters/firewallRules",
+      "apiVersion": "2024-02-15-preview",
+      "name": "[format('{0}/{1}', variables('mongovCoreSettings').mongoClusterName, 'allowAll')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "255.255.255.255"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/mongoClusters', variables('mongovCoreSettings').mongoClusterName)]"
+      ]
+    }
+  ]
+}
