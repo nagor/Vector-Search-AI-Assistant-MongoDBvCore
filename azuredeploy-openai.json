@@ -1,0 +1,116 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.26.54.24096",
+      "templateHash": "12494474432017648587"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "allowedValues": [
+        "australiaeast",
+        "westeurope",
+        "japaneast",
+        "uksouth",
+        "eastus",
+        "eastus2",
+        "southcentralus"
+      ],
+      "metadata": {
+        "description": "Location where all resources will be deployed. This value defaults to the **East US** region."
+      }
+    },
+    "openAiName": {
+      "type": "string",
+      "maxLength": 15,
+      "metadata": {
+        "description": "Name for Open AI Service"
+      }
+    },
+    "openAiSku": {
+      "type": "string",
+      "defaultValue": "S0",
+      "allowedValues": [
+        "S0"
+      ],
+      "metadata": {
+        "description": "Specifies the SKU for the Azure OpenAI resource. Defaults to **S0**"
+      }
+    }
+  },
+  "variables": {
+    "openAiSettings": {
+      "name": "[parameters('openAiName')]",
+      "sku": "[parameters('openAiSku')]",
+      "maxConversationTokens": "5000",
+      "maxCompletionTokens": "2000",
+      "maxEmbeddingTokens": "8000",
+      "completionsModel": {
+        "name": "gpt-35-turbo",
+        "version": "0613",
+        "deployment": {
+          "name": "aips-completions"
+        }
+      },
+      "embeddingsModel": {
+        "name": "text-embedding-ada-002",
+        "version": "2",
+        "deployment": {
+          "name": "aips-embeddings"
+        }
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('openAiSettings').name]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[variables('openAiSettings').sku]"
+      },
+      "kind": "OpenAI",
+      "properties": {
+        "customSubDomainName": "[variables('openAiSettings').name]",
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', variables('openAiSettings').name, variables('openAiSettings').embeddingsModel.deployment.name)]",
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[variables('openAiSettings').embeddingsModel.name]",
+          "version": "[variables('openAiSettings').embeddingsModel.version]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('openAiSettings').name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', variables('openAiSettings').name, variables('openAiSettings').completionsModel.deployment.name)]",
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[variables('openAiSettings').completionsModel.name]",
+          "version": "[variables('openAiSettings').completionsModel.version]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('openAiSettings').name)]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('openAiSettings').name, variables('openAiSettings').embeddingsModel.deployment.name)]"
+      ]
+    }
+  ]
+}
