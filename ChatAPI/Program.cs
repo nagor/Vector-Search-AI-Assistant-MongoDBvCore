@@ -33,10 +33,19 @@ else
     app.SetupErrorsTracking();
 }
 
+// enable cors
+app.UseCors(policyBuilder => policyBuilder
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader()
+);
+
 app.UseApiKeyMiddleware();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
+
 
 app.Run();
 
