@@ -1,0 +1,318 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.26.54.24096",
+      "templateHash": "17718262403384657203"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "allowedValues": [
+        "australiaeast",
+        "westeurope",
+        "japaneast",
+        "uksouth",
+        "eastus",
+        "eastus2",
+        "southcentralus"
+      ],
+      "metadata": {
+        "description": "Location where all resources will be deployed. This value defaults to the **East US** region."
+      }
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 25,
+      "metadata": {
+        "description": "Apps Prefix"
+      }
+    },
+    "appServiceSku": {
+      "type": "string",
+      "defaultValue": "B1",
+      "allowedValues": [
+        "B1",
+        "S1"
+      ],
+      "metadata": {
+        "description": "Specifies the SKU for the Azure App Service plan. Defaults to **B1**"
+      }
+    },
+    "linuxDotnetFxVersion": {
+      "type": "string",
+      "defaultValue": "DOTNETCORE|7.0"
+    },
+    "linuxNodeJsFxVersion": {
+      "type": "string",
+      "defaultValue": "node|18-lts"
+    }
+  },
+  "variables": {
+    "appServiceSettings": {
+      "plan": {
+        "name": "[format('{0}-web-plan', parameters('name'))]",
+        "sku": "[parameters('appServiceSku')]"
+      },
+      "chat": {
+        "name": "[format('{0}-chat', parameters('name'))]"
+      },
+      "web": {
+        "name": "[format('{0}-web', parameters('name'))]"
+      },
+      "api": {
+        "name": "[format('{0}-api', parameters('name'))]"
+      }
+    },
+    "openAiSettings": {
+      "maxConversationTokens": "5000",
+      "maxCompletionTokens": "2000",
+      "maxEmbeddingTokens": "8000",
+      "completionsModel": {
+        "deployment": {
+          "name": "aips-completions"
+        }
+      },
+      "embeddingsModel": {
+        "deployment": {
+          "name": "aips-embeddings"
+        }
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2022-09-01",
+      "name": "[variables('appServiceSettings').plan.name]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[variables('appServiceSettings').plan.sku]"
+      },
+      "kind": "linux",
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2022-09-01",
+      "name": "[variables('appServiceSettings').web.name]",
+      "location": "[parameters('location')]",
+      "kind": "app",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "alwaysOn": true,
+          "linuxFxVersion": "[parameters('linuxNodeJsFxVersion')]"
+        }
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2022-09-01",
+      "name": "[variables('appServiceSettings').chat.name]",
+      "location": "[parameters('location')]",
+      "kind": "app",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "alwaysOn": true,
+          "linuxFxVersion": "[parameters('linuxDotnetFxVersion')]"
+        }
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2022-09-01",
+      "name": "[variables('appServiceSettings').api.name]",
+      "location": "[parameters('location')]",
+      "kind": "app",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "alwaysOn": true,
+          "linuxFxVersion": "[parameters('linuxDotnetFxVersion')]"
+        }
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServiceSettings').plan.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', variables('appServiceSettings').api.name, 'appsettings')]",
+      "kind": "string",
+      "properties": {
+        "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', variables('appServiceSettings').api.name), '2020-02-02').InstrumentationKey]",
+        "OPENAI__ENDPOINT": "open_ai_endpoint",
+        "OPENAI__KEY": "open_ai_key",
+        "OPENAI__EMBEDDINGSDEPLOYMENT": "[variables('openAiSettings').embeddingsModel.deployment.name]",
+        "OPENAI__COMPLETIONSDEPLOYMENT": "[variables('openAiSettings').completionsModel.deployment.name]",
+        "OPENAI__MAXCONVERSATIONTOKENS": "[variables('openAiSettings').maxConversationTokens]",
+        "OPENAI__MAXCOMPLETIONTOKENS": "[variables('openAiSettings').maxCompletionTokens]",
+        "OPENAI__MAXEMBEDDINGTOKENS": "[variables('openAiSettings').maxEmbeddingTokens]",
+        "MONGODB__CONNECTION": "mongodb_connection",
+        "MONGODB__DATABASENAME": "retaildb",
+        "MONGODB__COLLECTIONNAMES": "product,customer,vectors,completions,clothes",
+        "MONGODB__MAXVECTORSEARCHRESULTS": "20",
+        "MONGODB__VECTORINDEXTYPE": "ivf",
+        "CHATAPI__APIKEY": "api_key"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').api.name)]",
+        "[resourceId('Microsoft.Insights/components', variables('appServiceSettings').api.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', variables('appServiceSettings').chat.name, 'appsettings')]",
+      "kind": "string",
+      "properties": {
+        "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', variables('appServiceSettings').chat.name), '2020-02-02').InstrumentationKey]",
+        "OPENAI__ENDPOINT": "open_ai_endpoint",
+        "OPENAI__KEY": "open_ai_key",
+        "OPENAI__EMBEDDINGSDEPLOYMENT": "[variables('openAiSettings').embeddingsModel.deployment.name]",
+        "OPENAI__COMPLETIONSDEPLOYMENT": "[variables('openAiSettings').completionsModel.deployment.name]",
+        "OPENAI__MAXCONVERSATIONTOKENS": "[variables('openAiSettings').maxConversationTokens]",
+        "OPENAI__MAXCOMPLETIONTOKENS": "[variables('openAiSettings').maxCompletionTokens]",
+        "OPENAI__MAXEMBEDDINGTOKENS": "[variables('openAiSettings').maxEmbeddingTokens]",
+        "MONGODB__CONNECTION": "",
+        "MONGODB__DATABASENAME": "retaildb",
+        "MONGODB__COLLECTIONNAMES": "product,customer,vectors,completions,clothes",
+        "MONGODB__MAXVECTORSEARCHRESULTS": "20",
+        "MONGODB__VECTORINDEXTYPE": "ivf"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').chat.name)]",
+        "[resourceId('Microsoft.Insights/components', variables('appServiceSettings').chat.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', variables('appServiceSettings').web.name, 'appsettings')]",
+      "kind": "string",
+      "properties": {
+        "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', variables('appServiceSettings').web.name), '2020-02-02').InstrumentationKey]",
+        "CHATAPI__APIURL": "api_url",
+        "CHATAPI__APIKEY": "api_key"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').web.name)]",
+        "[resourceId('Microsoft.Insights/components', variables('appServiceSettings').web.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/sourcecontrols",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', variables('appServiceSettings').web.name, 'web')]",
+      "properties": {
+        "repoUrl": "repo",
+        "branch": "main",
+        "isManualIntegration": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').web.name)]",
+        "[resourceId('Microsoft.Web/sites/config', variables('appServiceSettings').web.name, 'appsettings')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/sourcecontrols",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', variables('appServiceSettings').api.name, 'web')]",
+      "properties": {
+        "repoUrl": "repo",
+        "branch": "main",
+        "isManualIntegration": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').api.name)]",
+        "[resourceId('Microsoft.Web/sites/config', variables('appServiceSettings').api.name, 'appsettings')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/sourcecontrols",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', variables('appServiceSettings').chat.name, 'web')]",
+      "properties": {
+        "repoUrl": "repo",
+        "branch": "main",
+        "isManualIntegration": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').chat.name)]",
+        "[resourceId('Microsoft.Web/sites/config', variables('appServiceSettings').chat.name, 'appsettings')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appServiceSettings').web.name]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').web.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appServiceSettings').chat.name]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').chat.name)]"
+      ]
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appServiceSettings').api.name]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appServiceSettings').api.name)]"
+      ]
+    }
+  ],
+  "outputs": {
+    "deployedUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', variables('appServiceSettings').chat.name), '2022-09-01').defaultHostName]"
+    }
+  }
+}

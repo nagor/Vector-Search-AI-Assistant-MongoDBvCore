@@ -70,5 +70,5 @@ accept: */*
 Content-Type: application/json
 
 {
-  "userPrompt": "Statement earrings"
+  "userPrompt": "Sneakers"
 }
